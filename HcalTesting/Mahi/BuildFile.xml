@@ -1,0 +1,18 @@
+<use   name="clhep"/>
+<use   name="FWCore/MessageLogger"/>
+<use   name="FWCore/ParameterSet"/>
+<use   name="FWCore/Framework"/>
+<use   name="CondFormats/DataRecord"/>
+<use   name="DataFormats/HcalDetId"/>
+<use   name="vdt_headers"/>
+
+<use   name="root"/>
+<use   name="rootminuit"/>
+
+<use   name="eigen"/>
+
+<Flags CXXFLAGS="-Ofast"/>
+
+<export>
+  <lib   name="1"/>
+</export>

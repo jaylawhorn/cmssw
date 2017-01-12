@@ -23,7 +23,8 @@ hbheprereco = cms.EDProducer(
     dataOOTCorrectionCategory = cms.string("Data"),
     mcOOTCorrectionName = cms.string("HBHE"),
     mcOOTCorrectionCategory = cms.string("MC"),
-    puCorrMethod = cms.int32(2),
+    puCorrMethod = cms.int32(2),#==2 M2; #==10 MAHI; #==3 M3
+    pulseShapeType = cms.int32(1), #==1 105full; #==2 105csv; #==3 LAGcsv
 
     # Set time slice for first digi to be stored in aux word
     # (HBHE uses time slices 4-7 for reco)

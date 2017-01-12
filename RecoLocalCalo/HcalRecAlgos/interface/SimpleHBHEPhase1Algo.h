@@ -11,6 +11,7 @@
 #include "CalibCalorimetry/HcalAlgos/interface/HcalPulseContainmentManager.h"
 
 #include "RecoLocalCalo/HcalRecAlgos/interface/PulseShapeFitOOTPileupCorrection.h"
+#include "RecoLocalCalo/HcalRecAlgos/interface/DoMahiAlgo.h"
 #include "RecoLocalCalo/HcalRecAlgos/interface/HcalDeterministicFit.h"
 
 
@@ -44,8 +45,10 @@ public:
                          float phaseNS,
                          float timeShift,
                          bool correctForPhaseContainment,
+			 int pulseShapeType,
                          std::unique_ptr<PulseShapeFitOOTPileupCorrection> m2,
-                         std::unique_ptr<HcalDeterministicFit> detFit);
+                         std::unique_ptr<HcalDeterministicFit> detFit,
+			 std::unique_ptr<DoMahiAlgo> mahi);
 
     inline virtual ~SimpleHBHEPhase1Algo() {}
 
@@ -95,13 +98,19 @@ private:
     int runnum_;
     bool corrFPC_;
 
+    int pulseShapeType_;
+
     // "Metod 2" algorithm
     std::unique_ptr<PulseShapeFitOOTPileupCorrection> psFitOOTpuCorr_;
 
     // "Metod 3" algorithm
     std::unique_ptr<HcalDeterministicFit> hltOOTpuCorr_;
 
+    // "Mahi" algorithm
+    std::unique_ptr<DoMahiAlgo> psFitMAHIOOTpuCorr_;
+
     HcalPulseShapes theHcalPulseShapes_;
+
 };
 
 #endif // RecoLocalCalo_HcalRecAlgos_SimpleHBHEPhase1Algo_h_

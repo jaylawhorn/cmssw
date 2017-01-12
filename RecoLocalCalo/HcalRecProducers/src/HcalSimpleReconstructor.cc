@@ -143,8 +143,18 @@ void HcalSimpleReconstructor::process(edm::Event& e, const edm::EventSetup& even
 void HcalSimpleReconstructor::produce(edm::Event& e, const edm::EventSetup& eventSetup)
 {
   // HACK related to HB- corrections
-  if(e.isRealData()) reco_.setForData(e.run());
- 
+  // note this is for the pulse as well
+  if (subdet_==HcalBarrel) {
+    if(e.isRealData()) reco_.setForData(e.run(),true);
+    if(!e.isRealData()) reco_.setForData(0,true);
+  } 
+
+  if (subdet_==HcalEndcap) {
+    if(e.isRealData()) reco_.setForData(e.run(),false);
+    if(!e.isRealData()) reco_.setForData(0,true);
+  } 
+
+
   if (det_==DetId::Hcal) {
     if ((subdet_==HcalBarrel || subdet_==HcalEndcap)) {
       process<HBHEDigiCollection, HBHERecHitCollection>(e, eventSetup, tok_hbhe_);

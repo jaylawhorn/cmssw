@@ -50,6 +50,7 @@ HcalHitReconstructor::HcalHitReconstructor(edm::ParameterSet const& conf):
   setPileupCorrection_(0),
   paramTS(0),
   puCorrMethod_(conf.getParameter<int>("puCorrMethod")),
+  pulseShapeType_(conf.getParameter<int>("pulseShapeType")),
   cntprtCorrMethod_(0),
   first_(true)
 
@@ -254,6 +255,8 @@ HcalHitReconstructor::HcalHitReconstructor(edm::ParameterSet const& conf):
       setPileupCorrection_ = 0;
 
   reco_.setpuCorrMethod(puCorrMethod_);
+  reco_.setPulseShape(pulseShapeType_);
+
   if(puCorrMethod_ == 2) { 
     reco_.setpuCorrParams(
 			  conf.getParameter<bool>  ("applyPedConstraint"),
@@ -379,14 +382,27 @@ void HcalHitReconstructor::produce(edm::Event& e, const edm::EventSetup& eventSe
   edm::ESHandle<HcalDbService> conditions;
   eventSetup.get<HcalDbRecord>().get(conditions);
 
-  // HACK related to HB- corrections
+  const bool isData = e.isRealData();
+
   if ( first_ ) {
-    const bool isData = e.isRealData();
-    if (isData) reco_.setForData(e.run()); else reco_.setForData(0);
-    corrName_ = isData ? dataOOTCorrectionName_ : mcOOTCorrectionName_;
-    cat_ = isData ? dataOOTCorrectionCategory_ : mcOOTCorrectionCategory_;
-    first_=false;
+    // HACK related to HB- corrections
+    // now this is for the pulse as well
+    
+    if (subdet_==HcalBarrel) {
+      if(isData) reco_.setForData(e.run(),true);
+      if(!isData) reco_.setForData(0,true);   
+    }
+    
+    if (subdet_==HcalEndcap) {
+      if(isData) reco_.setForData(e.run(),false);
+      if(!isData) reco_.setForData(0,true);
+    }
   }
+
+  corrName_ = isData ? dataOOTCorrectionName_ : mcOOTCorrectionName_;
+  cat_ = isData ? dataOOTCorrectionCategory_ : mcOOTCorrectionCategory_;
+  first_=false;
+
   if (useLeakCorrection_) reco_.setLeakCorrection();
 
   edm::ESHandle<HcalChannelQuality> p;

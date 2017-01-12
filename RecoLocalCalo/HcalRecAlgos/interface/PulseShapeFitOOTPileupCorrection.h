@@ -72,6 +72,7 @@ namespace FitterFuncs{
 
      bool isNew_;
 
+     // hardcoded array :( 
      float minCharge_[58];
      float maxCharge_[58];
      float pulseFrac_[58][10];

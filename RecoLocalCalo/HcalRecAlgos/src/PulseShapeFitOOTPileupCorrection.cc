@@ -169,6 +169,7 @@ namespace FitterFuncs{
   void PulseShapeFunctor::funcNewShape(std::array<double,HcalConst::maxSamples> & ntmpbin, const double &pulseTime, const double &pulseHeight) {
     ntmpbin = { {0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f} };
 
+    // hardcoded array :( 
     int chargeBin = -1;
     for (int i=0; i<58; i++) {
       if (pulseHeight>minCharge_[i] && pulseHeight<maxCharge_[i]) chargeBin=i;

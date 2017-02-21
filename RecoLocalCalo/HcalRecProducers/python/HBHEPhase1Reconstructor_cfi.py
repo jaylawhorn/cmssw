@@ -61,7 +61,10 @@ hbheprereco = cms.EDProducer(
         useM2 = cms.bool(True),
 
         # Use "Method 3"?
-        useM3 = cms.bool(True)
+        useM3 = cms.bool(True),
+
+        # Set "pulse shape"  #0=run2Setting; #1="landau"; #2="105"; #3="203"
+        pulseShapeType = cms.int32(0)
     ),
 
     # Reconstruction algorithm configuration data to fetch from DB, if any

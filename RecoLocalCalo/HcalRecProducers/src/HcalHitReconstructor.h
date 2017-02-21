@@ -111,6 +111,7 @@ class HcalTopology;
       std::unique_ptr<HcalFlagHFDigiTimeParams> HFDigiTimeParams; // HF DigiTime parameters
 
       int puCorrMethod_;
+      int pulseShapeType_;
       int cntprtCorrMethod_;
       bool first_;
       std::string corrName_,cat_;

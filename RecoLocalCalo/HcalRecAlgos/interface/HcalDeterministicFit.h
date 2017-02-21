@@ -19,6 +19,7 @@ class HcalDeterministicFit {
   ~HcalDeterministicFit();
 
   void init(HcalTimeSlew::ParaSource tsParam, HcalTimeSlew::BiasSetting bias, bool iApplyTimeSlew, PedestalSub pedSubFxn_, std::vector<double> pars, double respCorr);
+  void setExternalPulseShape(int shape);
 
   void phase1Apply(const HBHEChannelInfo& channelData,
 		   float& reconstructedEnergy,
@@ -28,12 +29,15 @@ class HcalDeterministicFit {
   template<class Digi>
   void apply(const CaloSamples & cs, const std::vector<int> & capidvec, const HcalCalibrations & calibs, const Digi & digi, double& ampl, float &time) const;
   void getLandauFrac(float tStart, float tEnd, float &sum) const;
+  void getLandauFrac(float fC, int offset, double fpar0, double fpar1, double fpar2, float &sum) const;
 
  private:
   HcalTimeSlew::ParaSource fTimeSlew;
   HcalTimeSlew::BiasSetting fTimeSlewBias;
   PedestalSub fPedestalSubFxn_;
   bool applyTimeSlew_;
+  bool useExtPulse_ = false;
+  int shape_; // 1=landau, 2=105, 3=203
 
   double fpars[9];
   double frespCorr;
@@ -58,6 +62,13 @@ class HcalDeterministicFit {
   0.0224483, 0.0210872, 0.0197684, 0.0184899, 0.01725, 0.0160471, 0.0148795, 0.0137457, 0.0126445, 
   0.0115743, 0.0105341, 0.00952249, 0.00853844, 0.00758086, 0.00664871,0.00574103, 0.00485689, 0.00399541, 
   0.00315576, 0.00233713, 0.00153878, 0.000759962, 0 };
+
+  float minCharge_[58];
+  float maxCharge_[58];
+  float pulseFrac_[58][10];
+  float pulseFracDeriv_[58][10];
+  float timeSlew_[58];
+
 };
 
 template<class Digi>
@@ -101,9 +112,68 @@ void HcalDeterministicFit::apply(const CaloSamples & cs, const std::vector<int> 
   else if (fTimeSlew==2)respCorr=rCorr[1];
   else if (fTimeSlew==3)respCorr=frespCorr;
 
-  float tsShift3=HcalTimeSlew::delay(inputCharge[3], fTimeSlew, fTimeSlewBias, fpar0, fpar1 ,fpar2);
-  float tsShift4=HcalTimeSlew::delay(inputCharge[4], fTimeSlew, fTimeSlewBias, fpar0, fpar1 ,fpar2);
-  float tsShift5=HcalTimeSlew::delay(inputCharge[5], fTimeSlew, fTimeSlewBias, fpar0, fpar1 ,fpar2);
+  float tsShift3=0;
+  float tsShift4=0;
+  float tsShift5=0;
+
+  float ch3=0;
+  float ch4=0;
+  float ch5=0;
+
+  if(useExtPulse_ && shape_==1) {
+
+    float i3=0;
+    getLandauFrac(inputCharge[3], 1, fpar0, fpar1, fpar2, i3);
+    float n3=0;
+    getLandauFrac(inputCharge[3], 2, fpar0, fpar1, fpar2, n3);
+    float nn3=0;
+    getLandauFrac(inputCharge[3], 3, fpar0, fpar1, fpar2, nn3);
+
+    float i4=0;
+    getLandauFrac(inputCharge[4], 1, fpar0, fpar1, fpar2, i4);
+    float n4=0;
+    getLandauFrac(inputCharge[4], 2, fpar0, fpar1, fpar2, n4);
+
+    float i5=0;
+    getLandauFrac(inputCharge[5], 1, fpar0, fpar1, fpar2, i5);
+    float n5=0;
+    getLandauFrac(inputCharge[5], 2, fpar0, fpar1, fpar2, n5);
+
+    if (i3 != 0 && i4 != 0 && i5 != 0) {
+
+      ch3=corrCharge[3]/i3;
+      ch4=(i3*corrCharge[4]-n3*corrCharge[3])/(i3*i4);
+      ch5=(n3*n4*corrCharge[3]-i4*nn3*corrCharge[3]-i3*n4*corrCharge[4]+i3*i4*corrCharge[5])/(i3*i4*i5);
+
+      if (ch3<negThresh[0]) {
+	ch3=negThresh[0];
+	ch4=corrCharge[4]/i4;
+	ch5=(i4*corrCharge[5]-n4*corrCharge[4])/(i4*i5);
+      }
+      if (ch5<negThresh[0] && ch4>negThresh[1]) {
+	float newTS = (corrCharge[5]-negThresh[0]*i5)/(corrCharge[4]-ch3*i3);
+	int newBin=0;
+	for (int k=0; k<58; k++) {
+	  if (newTS < timeSlew_[k]) newBin=k;
+	}
+	float i4_new = pulseFrac_[newBin][4];
+
+	if (i4_new!=0)
+	  {
+	    ch5=negThresh[0];
+	    ch4=(corrCharge[4]-ch3*n3)/(i4_new);
+	  }
+      }
+    }
+
+    if (ch4<1) ch4=0;
+
+  } else {
+    //used in Run2 2015-2016
+
+  tsShift3=HcalTimeSlew::delay(inputCharge[3], fTimeSlew, fTimeSlewBias, fpar0, fpar1 ,fpar2);
+  tsShift4=HcalTimeSlew::delay(inputCharge[4], fTimeSlew, fTimeSlewBias, fpar0, fpar1 ,fpar2);
+  tsShift5=HcalTimeSlew::delay(inputCharge[5], fTimeSlew, fTimeSlewBias, fpar0, fpar1 ,fpar2);
 
   float i3=0;
   getLandauFrac(-tsShift3,-tsShift3+tsWidth,i3);
@@ -121,10 +191,6 @@ void HcalDeterministicFit::apply(const CaloSamples & cs, const std::vector<int> 
   getLandauFrac(-tsShift5,-tsShift5+tsWidth,i5);
   float n5=0;
   getLandauFrac(-tsShift5+tsWidth,-tsShift5+tsWidth*2,n5);
-
-  float ch3=0;
-  float ch4=0;
-  float ch5=0;
 
   if (i3 != 0 && i4 != 0 && i5 != 0) {
 
@@ -151,8 +217,8 @@ void HcalDeterministicFit::apply(const CaloSamples & cs, const std::vector<int> 
     }
   }
 
-  if (ch4<1) {
-    ch4=0;
+  if (ch4<1) ch4=0;
+
   }
 
   double ampl=ch4*gainCorr*respCorr;

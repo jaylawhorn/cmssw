@@ -79,6 +79,13 @@ public:
     puCorrMethod_ = method;
     if( puCorrMethod_ == 2 )
         psFitOOTpuCorr_ = std::make_unique<PulseShapeFitOOTPileupCorrection>();
+
+    if ( puCorrMethod_ == 3 )
+        hltOOTpuCorr_ = std::make_unique<HcalDeterministicFit>();
+  }
+
+  void setPulseShape(int shape){
+    pulseShapeType_ = shape;
   }
 
   void setpuCorrParams(bool   iPedestalConstraint, bool iTimeConstraint,bool iAddPulseJitter,bool iApplyTimeSlew,
@@ -107,6 +114,7 @@ private:
   HcalPulseShapes theHcalPulseShapes_;
 
   int puCorrMethod_;
+  int pulseShapeType_;
 
   std::unique_ptr<PulseShapeFitOOTPileupCorrection> psFitOOTpuCorr_;
   

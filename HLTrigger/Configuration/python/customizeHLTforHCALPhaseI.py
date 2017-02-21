@@ -91,7 +91,8 @@ def customizeHLTforHEforPhaseI(process):
             timeSlewParsType    = cms.int32(3),                 # 0: TestStand, 1:Data, 2:MC, 3:InputPars. Parametrization function is par0 + par1*log(fC+par2).
             timeSlewPars        = cms.vdouble(12.2999, -2.19142, 0, 12.2999, -2.19142, 0, 12.2999, -2.19142, 0), 
                                                                 # HB par0, HB par1, HB par2, BE par0, BE par1, BE par2, HE par0, HE par1, HE par2
-            respCorrM3          = cms.double(0.95)              # This factor is used to align the the Method3 with the Method2 response
+            respCorrM3          = cms.double(0.95),             # This factor is used to align the the Method3 with the Method2 response
+            pulseShapeType      = cms.int32(0)                  # Set "pulse shape"  #0=run2Setting; #1="landau"; #2="105"; #3="203"
         ),
 
         # Reconstruction algorithm configuration data to fetch from DB, if any

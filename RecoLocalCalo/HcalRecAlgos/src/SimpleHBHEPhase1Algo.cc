@@ -21,6 +21,7 @@ SimpleHBHEPhase1Algo::SimpleHBHEPhase1Algo(
     const float phaseNS,
     const float timeShift,
     const bool correctForPhaseContainment,
+    const int pulseShapeType,
     std::unique_ptr<PulseShapeFitOOTPileupCorrection> m2,
     std::unique_ptr<HcalDeterministicFit> detFit)
     : pulseCorr_(PulseContainmentFractionalError),
@@ -30,6 +31,7 @@ SimpleHBHEPhase1Algo::SimpleHBHEPhase1Algo(
       timeShift_(timeShift),
       runnum_(0),
       corrFPC_(correctForPhaseContainment),
+      pulseShapeType_(pulseShapeType),
       psFitOOTpuCorr_(std::move(m2)),
       hltOOTpuCorr_(std::move(detFit))
 {
@@ -91,6 +93,9 @@ HBHERecHit SimpleHBHEPhase1Algo::reconstruct(const HBHEChannelInfo& info,
     const HcalDeterministicFit* method3 = hltOOTpuCorr_.get();
     if (method3)
     {
+
+      hltOOTpuCorr_->setExternalPulseShape(pulseShapeType_); //  # Set "pulse shape"  #0=run2Setting; #1="landau"; #2="105"; #3="203"
+
         // "phase1Apply" sets m3E and m3t (pased by non-const reference)
         method3->phase1Apply(info, m3E, m3t);
         m3E *= hbminusCorrectionFactor(channelId, m3E, isData);

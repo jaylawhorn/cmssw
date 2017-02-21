@@ -87,6 +87,7 @@ void HcalSimpleRecAlgo::setForData (int runnum) {
       bool isHPD=true;
       psFitOOTpuCorr_->setPulseShapeTemplate(theHcalPulseShapes_.getShape(shapeNum),isHPD);
    }
+   if (puCorrMethod_ == 3) hltOOTpuCorr_->setExternalPulseShape(pulseShapeType_);
 }
 
 void HcalSimpleRecAlgo::setLeakCorrection () { setLeakCorrection_ = true;}

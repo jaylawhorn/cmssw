@@ -50,6 +50,7 @@ HcalHitReconstructor::HcalHitReconstructor(edm::ParameterSet const& conf):
   setPileupCorrection_(0),
   paramTS(0),
   puCorrMethod_(conf.getParameter<int>("puCorrMethod")),
+  pulseShapeType_(conf.getParameter<int>("pulseShapeType")),
   cntprtCorrMethod_(0),
   first_(true)
 
@@ -254,6 +255,8 @@ HcalHitReconstructor::HcalHitReconstructor(edm::ParameterSet const& conf):
       setPileupCorrection_ = 0;
 
   reco_.setpuCorrMethod(puCorrMethod_);
+  reco_.setPulseShape(pulseShapeType_);
+
   if(puCorrMethod_ == 2) { 
     reco_.setpuCorrParams(
 			  conf.getParameter<bool>  ("applyPedConstraint"),

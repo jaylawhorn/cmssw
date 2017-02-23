@@ -81,6 +81,7 @@ class HcalDeterministicFit {
   float par2[10][2];
   float par3[10][2];
 
+  float tpar[10];
 
   float sumPars[4][2];
 

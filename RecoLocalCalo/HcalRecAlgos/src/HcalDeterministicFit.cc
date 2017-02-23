@@ -51,6 +51,7 @@ void HcalDeterministicFit::init(HcalTimeSlew::ParaSource tsParam, HcalTimeSlew::
     par1[i][0]=0; par1[i][1]=0;
     par2[i][0]=0; par2[i][1]=0;
     par3[i][0]=0; par3[i][1]=0;
+    tpar[i]=0;
   }
 
   par0[3][1] = 0.0792124;

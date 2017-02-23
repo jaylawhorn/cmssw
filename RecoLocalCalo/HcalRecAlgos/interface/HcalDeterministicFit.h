@@ -74,11 +74,14 @@ class HcalDeterministicFit {
   float timeSlew_[58];
 
   float loThresh;
+  float hiThresh;
   float flip[10];
   float par0[10][2];
   float par1[10][2];
   float par2[10][2];
   float par3[10][2];
+
+
   float sumPars[4][2];
 
 };

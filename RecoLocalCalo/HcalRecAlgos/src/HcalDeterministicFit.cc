@@ -38,6 +38,7 @@ void HcalDeterministicFit::init(HcalTimeSlew::ParaSource tsParam, HcalTimeSlew::
   float par3[10][2];*/
 
   loThresh=10;
+  hiThresh=3000;
 
   flip[0]=-100; flip[1]=-100; flip[2]=-100; flip[3]=-100; flip[4]=-100; 
   flip[5]=39; 

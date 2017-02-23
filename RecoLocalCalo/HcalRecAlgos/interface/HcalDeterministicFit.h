@@ -31,6 +31,10 @@ class HcalDeterministicFit {
   void getLandauFrac(float tStart, float tEnd, float &sum) const;
   void getLandauFrac(float fC, int offset, double fpar0, double fpar1, double fpar2, float &sum) const;
 
+  float getPulseFrac(float fC, int ts) const;
+  float getPulseFracNorm(float fC) const;
+  float getNegativeEnergyCorr(float fC, float corrTS) const;
+
  private:
   HcalTimeSlew::ParaSource fTimeSlew;
   HcalTimeSlew::BiasSetting fTimeSlewBias;
@@ -68,6 +72,14 @@ class HcalDeterministicFit {
   float pulseFrac_[58][10];
   float pulseFracDeriv_[58][10];
   float timeSlew_[58];
+
+  float loThresh;
+  float flip[10];
+  float par0[10][2];
+  float par1[10][2];
+  float par2[10][2];
+  float par3[10][2];
+  float sumPars[4][2];
 
 };
 

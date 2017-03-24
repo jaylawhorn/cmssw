@@ -23,10 +23,10 @@ class HcalDeterministicFit {
   ~HcalDeterministicFit();
 
   void init(HcalTimeSlew::ParaSource tsParam, HcalTimeSlew::BiasSetting bias, bool iApplyTimeSlew, PedestalSub pedSubFxn_, NewPulseShapes pulseShapes_, std::vector<double> pars, double respCorr);
+  void setDebug( bool doDebug);
 
   void phase1Apply(const HBHEChannelInfo& channelData,
-		   float& reconstructedEnergy,
-		   float& reconstructedTime) const;
+		   std::vector<float>& reconstructedVals) const;
 
   // This is the CMSSW Implementation of the apply function
   template<class Digi>
@@ -40,6 +40,7 @@ class HcalDeterministicFit {
   PedestalSub fPedestalSubFxn_;
   NewPulseShapes fPulseShapes_;
   bool applyTimeSlew_;
+  bool doDebug_;
 
   double fpars[9];
   double frespCorr;

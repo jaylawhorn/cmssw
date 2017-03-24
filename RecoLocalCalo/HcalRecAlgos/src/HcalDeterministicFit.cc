@@ -4,7 +4,8 @@
 #include "RecoLocalCalo/HcalRecAlgos/interface/HcalDeterministicFit.h"
 #include <TF1.h>
 
-bool useDB2 = true;
+bool useDB2   = true;
+bool doDebug2 = true;
 
 constexpr float HcalDeterministicFit::invGpar[3];
 constexpr float HcalDeterministicFit::negThresh[2];
@@ -32,6 +33,10 @@ void HcalDeterministicFit::init(HcalTimeSlew::ParaSource tsParam, HcalTimeSlew::
   frespCorr=respCorr;
 
   fPulseShapes_ = pulseShapes_;
+}
+
+void HcalDeterministicFit::setDebug(bool doDebug) {
+  doDebug_ = doDebug;
 }
 
 constexpr float HcalDeterministicFit::landauFrac[];
@@ -81,10 +86,8 @@ float HcalDeterministicFit::getNegativeEnergyCorr(float fC, float corrTS) const 
 
 }
 
-
 void HcalDeterministicFit::phase1Apply(const HBHEChannelInfo& channelData,
-				       float& reconstructedEnergy,
-				       float& reconstructedTime) const
+				       std::vector<float>& reconstructedVals) const
 {
 
   std::vector<double> corrCharge;
@@ -227,7 +230,12 @@ void HcalDeterministicFit::phase1Apply(const HBHEChannelInfo& channelData,
   if (ch4<1) {
     ch4=0;
   }
-  
-  reconstructedEnergy=ch4*gainCorr*respCorr;
-  reconstructedTime=tsShift4;
+
+  reconstructedVals.push_back(ch4*gainCorr*respCorr); //reconstructed energy
+  reconstructedVals.push_back(tsShift4);              //reconstructed time
+
+  if (doDebug_) {
+    float pedestalVal = fPedestalSubFxn_.getCorrection(inputCharge, inputPedestal);
+    reconstructedVals.push_back(pedestalVal);
+  }
 }

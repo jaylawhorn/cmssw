@@ -80,6 +80,7 @@ HBHERecHit SimpleHBHEPhase1Algo::reconstruct(const HBHEChannelInfo& info,
     {
         psFitOOTpuCorr_->setPulseShapeTemplate(theHcalPulseShapes_.getShape(info.recoShape()),
                                                !info.hasTimeInfo());
+	psFitOOTpuCorr_->setDebug(true);
         // "phase1Apply" call below sets m2E, m2t, useTriple, and chi2.
         // These parameters are pased by non-const reference.
         method2->phase1Apply(info, m2E, m2t, useTriple, chi2);
@@ -91,9 +92,12 @@ HBHERecHit SimpleHBHEPhase1Algo::reconstruct(const HBHEChannelInfo& info,
     const HcalDeterministicFit* method3 = hltOOTpuCorr_.get();
     if (method3)
     {
-        // "phase1Apply" sets m3E and m3t (pased by non-const reference)
-        method3->phase1Apply(info, m3E, m3t);
-        m3E *= hbminusCorrectionFactor(channelId, m3E, isData);
+      // "phase1Apply" sets m3E and m3t (pased by non-const reference)
+      std::vector<float> tmpResult;
+      method3->phase1Apply(info,tmpResult);
+      m3E=tmpResult.at(0);
+      m3t=tmpResult.at(1);
+      m3E *= hbminusCorrectionFactor(channelId, m3E, isData);
     }
 
     // Finally, construct the rechit

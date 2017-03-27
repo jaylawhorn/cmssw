@@ -87,21 +87,42 @@ HBHERecHit SimpleHBHEPhase1Algo::reconstruct(const HBHEChannelInfo& info,
       //                                       !info.hasTimeInfo());
 
       psFitOOTpuCorr_->newSetPulseShapeTemplate(*newPulseShapes_);
+      psFitOOTpuCorr_->setDebug(true);
       // "phase1Apply" call below sets m2E, m2t, useTriple, and chi2.
+      std::vector<float> tmpResult;
       // These parameters are pased by non-const reference.
-      method2->phase1Apply(info, m2E, m2t, useTriple, chi2);
+      method2->phase1Apply(info, tmpResult, useTriple);
+      if (tmpResult.size() != 0) {
+	m2t = tmpResult.at(0);
+	m2E = tmpResult.at(1);
+	chi2 = tmpResult.at(3);
+      }
+      else {
+	m2t=0;
+	m2E=0;
+	chi2=0;
+      }
       m2E *= hbminusCorrectionFactor(channelId, m2E, isData);
     }
 
     // Run "Method 3"
     float m3t = 0.f, m3E = 0.f;
-    //const HcalDeterministicFit* method3 = hltOOTpuCorr_.get();
     const HcalDeterministicFit* method3 = hltOOTpuCorr_.get();
     if (method3)
     {
       hltOOTpuCorr_->configurePulseShapes(*newPulseShapes_);
+      hltOOTpuCorr_->setDebug(true);
       // "phase1Apply" sets m3E and m3t (pased by non-const reference)
-      method3->phase1Apply(info, m3E, m3t);
+      std::vector<float> tmpResult;
+      method3->phase1Apply(info, tmpResult);
+      if (tmpResult.size() != 0) {
+	m3E=tmpResult.at(0);
+	m3t=tmpResult.at(1);
+      }
+      else {
+	m3E=0;
+	m3t=0;
+      }
       m3E *= hbminusCorrectionFactor(channelId, m3E, isData);
     }
 

@@ -301,6 +301,9 @@ void PulseShapeFitOOTPileupCorrection::setChi2Term( bool isHPD ) {
 
 }
 
+void PulseShapeFitOOTPileupCorrection::setDebug( bool doDebug ) {
+  doDebug_ = doDebug;
+}
 
 void PulseShapeFitOOTPileupCorrection::setPUParams(bool   iPedestalConstraint, bool iTimeConstraint,bool iAddPulseJitter,
 						   bool iApplyTimeSlew,double iTS4Min, const std::vector<double> & iTS4Max,
@@ -363,7 +366,6 @@ void PulseShapeFitOOTPileupCorrection::resetPulseShapeTemplate(const HcalPulseSh
 
 void PulseShapeFitOOTPileupCorrection::newSetPulseShapeTemplate(NewPulseShapes pulseShapeInfo) {
   setChi2Term(true);
-  std::cout << "use new pulse shapes, method 2" << std::endl;
   newResetPulseShapeTemplate(pulseShapeInfo);
 }
 
@@ -481,20 +483,22 @@ int PulseShapeFitOOTPileupCorrection::pulseShapeFit(const double * energyArr, co
    psfPtr_->setpsFitslew (tmpslew);
    
    //Fit 1 single pulse
-   float timevalfit  = 0;
-   float chargevalfit= 0;
-   float pedvalfit   = 0;
    float chi2        = 999; //cannot be zero
    bool  fitStatus   = false;
    bool useTriple = false;
+   fitParsVec.clear();
 
    int BX[3] = {4,5,3};
-   if(ts4Chi2_ != 0) fit(1,timevalfit,chargevalfit,pedvalfit,chi2,fitStatus,tsMAX,tsTOTen,tmpy,BX);
+   if(ts4Chi2_ != 0) {
+     fit(1,fitParsVec,fitStatus,tsMAX,tsTOTen,tmpy,BX);
+     chi2=fitParsVec.at(3);
+   }
 // Based on the pulse shape ( 2. likely gives the same performance )
    if(tmpy[2] > 3.*tmpy[3]) BX[2] = 2;
 // Only do three-pulse fit when tstrig < ts4Max_, otherwise one-pulse fit is used (above)
    if(chi2 > ts4Chi2_ && tstrig < ts4Max_)   { //fails chi2 cut goes straight to 3 Pulse fit
-     fit(3,timevalfit,chargevalfit,pedvalfit,chi2,fitStatus,tsMAX,tsTOTen,tmpy,BX);
+     fit(3,fitParsVec,fitStatus,tsMAX,tsTOTen,tmpy,BX);
+     chi2=fitParsVec.at(3);
      useTriple=true;
    }
 
@@ -506,17 +510,23 @@ int PulseShapeFitOOTPileupCorrection::pulseShapeFit(const double * energyArr, co
    */
    //Fix back the timeslew
    //if(applyTimeSlew_) timevalfit+=HcalTimeSlew::delay(std::max(1.0,chargeArr[4]),slewFlavor_);
+
    int outfitStatus = (fitStatus ? 1: 0 );
-   fitParsVec.clear();
-   fitParsVec.push_back(chargevalfit);
-   fitParsVec.push_back(timevalfit);
-   fitParsVec.push_back(pedvalfit);
-   fitParsVec.push_back(chi2);
+
    fitParsVec.push_back(useTriple);
+
    return outfitStatus;
 }
 
-void PulseShapeFitOOTPileupCorrection::fit(int iFit,float &timevalfit,float &chargevalfit,float &pedvalfit,float &chi2,bool &fitStatus,double &iTSMax,const double &iTSTOTEn,double *iEnArr,int (&iBX)[3]) const { 
+//void PulseShapeFitOOTPileupCorrection::fit(int iFit,float &timevalfit,float &chargevalfit,float &pedvalfit,float &chi2,bool &fitStatus,double &iTSMax,const double &iTSTOTEn,double *iEnArr,int (&iBX)[3]) const { 
+void PulseShapeFitOOTPileupCorrection::fit(int iFit,
+					   std::vector<float> & fitParsVec,
+					   bool &fitStatus,
+					   double &iTSMax,
+					   const double &iTSTOTEn,
+					   double *iEnArr,
+					   int (&iBX)[3]) const {
+
   int n = 3;
   if(iFit == 2) n = 5; //Two   Pulse Fit 
   if(iFit == 3) n = 7; //Three Pulse Fit 
@@ -554,7 +564,7 @@ void PulseShapeFitOOTPileupCorrection::fit(int iFit,float &timevalfit,float &cha
    //Secret Option to fix the pedestal
    if(pedSig_ < 0) hybridfitter->SetFixedVariable(n-1,varNames[n-1],vstart[n-1]);
    //a special number to label the initial condition
-   chi2=-1;
+   double chi2=-1;
    //3 fits why?!
    const double *results = 0;
    for(int tries=0; tries<=3;++tries){
@@ -587,17 +597,26 @@ void PulseShapeFitOOTPileupCorrection::fit(int iFit,float &timevalfit,float &cha
    }
    assert(results);
 
-   timevalfit   = results[0];
-   chargevalfit = results[1];
-   pedvalfit    = results[n-1];
+   fitParsVec.push_back(results[1]);   //TS4 charge                                                                                                             
+   fitParsVec.push_back(results[0]);   //TS4 time                                                                                                               
+   fitParsVec.push_back(results[n-1]); //pedestal                                                                                                               
+   fitParsVec.push_back(chi2);
+
+   if(iFit >= 2 && doDebug_) {
+     fitParsVec.push_back(results[3]);  //TS5 charge                                                                                                            
+     fitParsVec.push_back(results[2]);  //TS5 time                                                                                                              
+   }
+   if(iFit >= 3 && doDebug_) {
+     fitParsVec.push_back(results[5]);  //TS3 charge                                                                                                            
+     fitParsVec.push_back(results[4]);  //TS3 time                                                                                                              
+   }
+
 
 }
 
 void PulseShapeFitOOTPileupCorrection::phase1Apply(const HBHEChannelInfo& channelData,
-						   float& reconstructedEnergy,
-						   float& reconstructedTime,
-						   bool& useTriple,
-						   float& chi2) const
+						   std::vector<float>& reconstructedVals,
+						   bool& useTriple) const
 {
 
   psfPtr_->setDefaultcntNANinfit();
@@ -670,22 +689,18 @@ void PulseShapeFitOOTPileupCorrection::phase1Apply(const HBHEChannelInfo& channe
     ts4Max_=vts4Max_[0]; ts4Chi2_=vts4Chi2_[0];
   }
 
-  std::vector<float> fitParsVec;
+  //std::vector<float> fitParsVec;
   if(tstrig >= ts4Min_ && tsTOTen > 0.) { //Two sigma from 0
-    pulseShapeFit(energyArr, pedenArr, chargeArr, pedArr, gainArr, tsTOTen, fitParsVec,noiseArrSq);
+    pulseShapeFit(energyArr, pedenArr, chargeArr, pedArr, gainArr, tsTOTen, reconstructedVals,noiseArrSq);
   } else {
-    fitParsVec.clear();
-    fitParsVec.push_back(0.); //charge
-    fitParsVec.push_back(-9999); // time
-    fitParsVec.push_back(0.); // ped
-    fitParsVec.push_back(-9999); // chi2
-    fitParsVec.push_back(false); // triple
+    reconstructedVals.clear();
+    reconstructedVals.push_back(0.); //charge
+    reconstructedVals.push_back(-9999); // time
+    reconstructedVals.push_back(0.); // ped
+    reconstructedVals.push_back(-9999); // chi2
+    reconstructedVals.push_back(false); // triple
    }
 
-
-  reconstructedEnergy = fitParsVec[0];
-  reconstructedTime = fitParsVec[1];
-  chi2 = fitParsVec[3];
-  useTriple = fitParsVec[4];
+  useTriple = reconstructedVals.back();
 
 }

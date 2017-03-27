@@ -31,6 +31,10 @@ void HcalDeterministicFit::init(HcalTimeSlew::ParaSource tsParam, HcalTimeSlew::
 
 }
 
+void HcalDeterministicFit::setDebug(bool doDebug) {
+  doDebug_ = doDebug;
+} 
+
 constexpr float HcalDeterministicFit::landauFrac[];
 // Landau function integrated in 1 ns intervals
 //Landau pulse shape from https://indico.cern.ch/event/345283/contribution/3/material/slides/0.pdf
@@ -59,7 +63,7 @@ void HcalDeterministicFit::get205Frac(float tStart, float tEnd, float &sum) cons
 
 void HcalDeterministicFit::configurePulseShapes(NewPulseShapes pulseShapeInfo) {
 
-  std::cout << "use new pulse shapes, method 3" << std::endl;
+  //std::cout << "use new pulse shapes, method 3" << std::endl;
   pulseShapeInfo_ = pulseShapeInfo;
   useDbPulseShapes_ = true;
 }
@@ -95,8 +99,7 @@ float HcalDeterministicFit::getNegativeEnergyCorr(float fC, float corrTS) const 
 }
 
 void HcalDeterministicFit::phase1Apply(const HBHEChannelInfo& channelData,
-				       float& reconstructedEnergy,
-				       float& reconstructedTime) const
+				       std::vector<float>& reconstructedVals) const
 {
 
   std::vector<double> corrCharge;
@@ -257,6 +260,12 @@ void HcalDeterministicFit::phase1Apply(const HBHEChannelInfo& channelData,
     ch4=0;
   }
 
-  reconstructedEnergy=ch4*gainCorr*respCorr;
-  reconstructedTime=tsShift4;
+  reconstructedVals.push_back(ch4*gainCorr*respCorr);
+  reconstructedVals.push_back(tsShift4);
+
+  if (doDebug_) {
+    float pedestalVal = fPedestalSubFxn_.getCorrection(inputCharge, inputPedestal);
+    reconstructedVals.push_back(pedestalVal);
+  }
+
 }

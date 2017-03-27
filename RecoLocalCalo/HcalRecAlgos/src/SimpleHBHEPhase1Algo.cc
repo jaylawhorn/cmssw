@@ -33,6 +33,7 @@ SimpleHBHEPhase1Algo::SimpleHBHEPhase1Algo(
       psFitOOTpuCorr_(std::move(m2)),
       hltOOTpuCorr_(std::move(detFit))
 {
+  newPulseShapes_ = std::make_unique<NewPulseShapes>();
 }
 
 void SimpleHBHEPhase1Algo::beginRun(const edm::Run& r,
@@ -53,6 +54,10 @@ HBHERecHit SimpleHBHEPhase1Algo::reconstruct(const HBHEChannelInfo& info,
                                              const HcalCalibrations& calibs,
                                              const bool isData)
 {
+
+  //temporarily init new pulseshapes
+  newPulseShapes_->configurePulseShapes();
+
     HBHERecHit rh;
 
     const HcalDetId channelId(info.id());
@@ -78,22 +83,26 @@ HBHERecHit SimpleHBHEPhase1Algo::reconstruct(const HBHEChannelInfo& info,
     const PulseShapeFitOOTPileupCorrection* method2 = psFitOOTpuCorr_.get();
     if (method2)
     {
-        psFitOOTpuCorr_->setPulseShapeTemplate(theHcalPulseShapes_.getShape(info.recoShape()),
-                                               !info.hasTimeInfo());
-        // "phase1Apply" call below sets m2E, m2t, useTriple, and chi2.
-        // These parameters are pased by non-const reference.
-        method2->phase1Apply(info, m2E, m2t, useTriple, chi2);
-        m2E *= hbminusCorrectionFactor(channelId, m2E, isData);
+      //psFitOOTpuCorr_->setPulseShapeTemplate(theHcalPulseShapes_.getShape(info.recoShape()),
+      //                                       !info.hasTimeInfo());
+
+      psFitOOTpuCorr_->newSetPulseShapeTemplate(*newPulseShapes_);
+      // "phase1Apply" call below sets m2E, m2t, useTriple, and chi2.
+      // These parameters are pased by non-const reference.
+      method2->phase1Apply(info, m2E, m2t, useTriple, chi2);
+      m2E *= hbminusCorrectionFactor(channelId, m2E, isData);
     }
 
     // Run "Method 3"
     float m3t = 0.f, m3E = 0.f;
+    //const HcalDeterministicFit* method3 = hltOOTpuCorr_.get();
     const HcalDeterministicFit* method3 = hltOOTpuCorr_.get();
     if (method3)
     {
-        // "phase1Apply" sets m3E and m3t (pased by non-const reference)
-        method3->phase1Apply(info, m3E, m3t);
-        m3E *= hbminusCorrectionFactor(channelId, m3E, isData);
+      hltOOTpuCorr_->configurePulseShapes(*newPulseShapes_);
+      // "phase1Apply" sets m3E and m3t (pased by non-const reference)
+      method3->phase1Apply(info, m3E, m3t);
+      m3E *= hbminusCorrectionFactor(channelId, m3E, isData);
     }
 
     // Finally, construct the rechit

@@ -60,6 +60,38 @@ namespace FitterFuncs{
     inverttimeSig2_ = inverttimeSig_*inverttimeSig_;
     invertpedSig_ = 1./pedSig_;
     invertpedSig2_ = invertpedSig_*invertpedSig_;
+
+    useDbPulseShapes_ = false;
+
+  }
+
+  PulseShapeFunctor::PulseShapeFunctor(NewPulseShapes pulseShapeInfo,
+				       bool iPedestalConstraint, bool iTimeConstraint,bool iAddPulseJitter,bool iAddTimeSlew,
+				       double iPulseJitter,double iTimeMean,double iTimeSig,double iPedMean,double iPedSig,
+				       double iNoise) {
+
+    pulseShapeInfo_ = pulseShapeInfo;
+    useDbPulseShapes_ = true;
+
+    //Constraints
+    pedestalConstraint_ = iPedestalConstraint;
+    timeConstraint_     = iTimeConstraint;
+    addPulseJitter_     = iAddPulseJitter;
+    pulseJitter_        = iPulseJitter;
+    timeMean_           = iTimeMean;
+    timeSig_            = iTimeSig;
+    pedMean_            = iPedMean;
+    pedSig_             = iPedSig;
+    noise_              = iNoise;
+    timeShift_          = 100.;
+    timeShift_ += 12.5;//we are trying to get BX 
+
+    inverttimeSig_ = 1./timeSig_;
+    inverttimeSig2_ = inverttimeSig_*inverttimeSig_;
+    invertpedSig_ = 1./pedSig_;
+    invertpedSig2_ = invertpedSig_*invertpedSig_;
+
+
   }
 
   void PulseShapeFunctor::funcHPDShape(std::array<double,HcalConst::maxSamples> & ntmpbin, const double &pulseTime, const double &pulseHeight,const double &slew) { 
@@ -103,6 +135,24 @@ namespace FitterFuncs{
     return;
   }
 
+  void PulseShapeFunctor::funcNewShape(std::array<double,HcalConst::maxSamples> & ntmpbin, const double &pulseTime, const double &pulseHeight) {
+    ntmpbin = { {0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f} };
+
+
+    //std::cout << ">> " << pulseHeight << "; " << pulseTime << "; ";
+    //std::cout << std::endl;
+    float sum=pulseShapeInfo_.getPulseFracNorm(pulseHeight,pulseTime);
+    //std::cout << "sum " << sum <<  std::endl;
+    //if (pulseHeight>10) std::cout << pulseHeight << "; " << sum << "; ";
+    for (int i=0; i<10; i++) {
+      //std::cout << pulseShapeInfo_.getPulseFrac(pulseHeight,0,i) << ", ";
+      ntmpbin[i] = pulseHeight * (pulseShapeInfo_.getPulseFrac(pulseHeight,pulseTime,i)/sum);
+      //std::cout << ntmpbin[i] << "; ";
+    }
+    //std::cout << std::endl;
+    return;
+  }
+
   PulseShapeFunctor::~PulseShapeFunctor() {
   }
 
@@ -120,7 +170,12 @@ namespace FitterFuncs{
       if(addPulseJitter_) {
 	int time = (pars[0]+timeShift_-timeMean_)*HcalConst::invertnsPerBx;
 	//Interpolate the fit (Quickly)
-	funcHPDShape(pulse_shape_, pars[0],pars[1],psFit_slew[time]);
+
+	if (useDbPulseShapes_ == false) 
+	  funcHPDShape(pulse_shape_, pars[0],pars[1],psFit_slew[time]);
+	else 
+	  funcNewShape(pulse_shape_, pars[0],pars[1]);
+
 	for (j=0; j<nbins; ++j) {
 	  psFit_erry2[j]  = psFit_erry2[j] + pulse_shape_[j]*pulse_shape_[j]*pulseJitter_;
 	  pulse_shape_sum_[j] = pulse_shape_[j] + pars[nPars-1];
@@ -130,7 +185,10 @@ namespace FitterFuncs{
 	while (i<parBy2) {  
 	  time = (pars[i*2]+timeShift_-timeMean_)*HcalConst::invertnsPerBx;
 	  //Interpolate the fit (Quickly)
-	  funcHPDShape(pulse_shape_, pars[i*2],pars[i*2+1],psFit_slew[time]);
+	  if (useDbPulseShapes_ == false) 
+	    funcHPDShape(pulse_shape_, pars[i+2],pars[i*2+1],psFit_slew[time]);
+	  else 
+	    funcNewShape(pulse_shape_, pars[i*2],pars[i*2+1]);
 	  // add an uncertainty from the pulse (currently noise * pulse height =>Ecal uses full cov)
 	 /////
 	  for (j=0; j<nbins; ++j) {
@@ -143,7 +201,11 @@ namespace FitterFuncs{
       else{
 	int time = (pars[0]+timeShift_-timeMean_)*HcalConst::invertnsPerBx;
 	//Interpolate the fit (Quickly)
-	funcHPDShape(pulse_shape_, pars[0],pars[1],psFit_slew[time]);
+	if (useDbPulseShapes_ == false) 
+	  funcHPDShape(pulse_shape_, pars[0],pars[1],psFit_slew[time]);
+	else
+	  funcNewShape(pulse_shape_, pars[0],pars[1]);
+
 	for(j=0; j<nbins; ++j)
 	  pulse_shape_sum_[j] = pulse_shape_[j] + pars[nPars-1];
 
@@ -151,7 +213,11 @@ namespace FitterFuncs{
 	while (i<parBy2) {  
 	  time = (pars[i*2]+timeShift_-timeMean_)*HcalConst::invertnsPerBx;
 	  //Interpolate the fit (Quickly)
-	  funcHPDShape(pulse_shape_, pars[i*2],pars[i*2+1],psFit_slew[time]);
+	  if (useDbPulseShapes_ == false) 
+	    funcHPDShape(pulse_shape_, pars[i*2],pars[i*2+1],psFit_slew[time]);
+	  else
+	    funcNewShape(pulse_shape_, pars[i*2],pars[i*2+1]);
+
 	  // add an uncertainty from the pulse (currently noise * pulse height =>Ecal uses full cov)
 	  for(j=0; j<nbins; ++j)
 	    pulse_shape_sum_[j] += pulse_shape_[j];
@@ -293,6 +359,23 @@ void PulseShapeFitOOTPileupCorrection::resetPulseShapeTemplate(const HcalPulseSh
    dpfunctor_    = std::unique_ptr<ROOT::Math::Functor>( new ROOT::Math::Functor(psfPtr_.get(),&FitterFuncs::PulseShapeFunctor::doublePulseShapeFunc, 5) );
    tpfunctor_    = std::unique_ptr<ROOT::Math::Functor>( new ROOT::Math::Functor(psfPtr_.get(),&FitterFuncs::PulseShapeFunctor::triplePulseShapeFunc, 7) );
 
+}
+
+void PulseShapeFitOOTPileupCorrection::newSetPulseShapeTemplate(NewPulseShapes pulseShapeInfo) {
+  setChi2Term(true);
+  std::cout << "use new pulse shapes, method 2" << std::endl;
+  newResetPulseShapeTemplate(pulseShapeInfo);
+}
+
+void PulseShapeFitOOTPileupCorrection::newResetPulseShapeTemplate(NewPulseShapes pulseShapeInfo) {
+  ++ cntsetPulseShape;
+
+  psfPtr_.reset(new FitterFuncs::PulseShapeFunctor(pulseShapeInfo,pedestalConstraint_,timeConstraint_,addPulseJitter_,applyTimeSlew_,
+						   pulseJitter_,timeMean_,timeSig_,pedMean_,pedSig_,noise_));
+  spfunctor_    = new ROOT::Math::Functor(psfPtr_.get(),&FitterFuncs::PulseShapeFunctor::singlePulseShapeFunc, 3);
+  dpfunctor_    = new ROOT::Math::Functor(psfPtr_.get(),&FitterFuncs::PulseShapeFunctor::doublePulseShapeFunc, 5);
+  tpfunctor_    = new ROOT::Math::Functor(psfPtr_.get(),&FitterFuncs::PulseShapeFunctor::triplePulseShapeFunc, 7);
+  
 }
 
 void PulseShapeFitOOTPileupCorrection::apply(const CaloSamples & cs,

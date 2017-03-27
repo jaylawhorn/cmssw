@@ -27,6 +27,7 @@ void HcalDeterministicFit::init(HcalTimeSlew::ParaSource tsParam, HcalTimeSlew::
   fTimeSlewBias=bias;
   fPedestalSubFxn_=pedSubFxn_;
   frespCorr=respCorr;
+  useDbPulseShapes_ = false;
 
 }
 
@@ -45,7 +46,6 @@ void HcalDeterministicFit::getLandauFrac(float tStart, float tEnd, float &sum) c
   return;
 }
 
-
 constexpr float HcalDeterministicFit::siPM205Frac[];
 void HcalDeterministicFit::get205Frac(float tStart, float tEnd, float &sum) const{
 
@@ -55,6 +55,43 @@ void HcalDeterministicFit::get205Frac(float tStart, float tEnd, float &sum) cons
   }
   sum= siPM205Frac[int(ceil(tStart+tsWidth))];
   return;
+}
+
+void HcalDeterministicFit::configurePulseShapes(NewPulseShapes pulseShapeInfo) {
+
+  std::cout << "use new pulse shapes, method 3" << std::endl;
+  pulseShapeInfo_ = pulseShapeInfo;
+  useDbPulseShapes_ = true;
+}
+
+float HcalDeterministicFit::getNegativeEnergyCorr(float fC, float corrTS) const {
+  float nomsum = pulseShapeInfo_.getPulseFracNorm(fC,0);
+  float nom4=pulseShapeInfo_.getPulseFrac(fC,0,4)/nomsum;
+  float nom5=pulseShapeInfo_.getPulseFrac(fC,0,5)/nomsum;
+
+  float dsum=pulseShapeInfo_.getPulseFracNorm(fC,1);
+  float d4=pulseShapeInfo_.getPulseFrac(fC,1,4)/dsum;
+  float d5=pulseShapeInfo_.getPulseFrac(fC,1,5)/dsum;
+
+  d4-=nom4;
+  d5-=nom5;
+
+  float corrT = 0;
+  if ( d5 != corrTS * d4) {
+    corrT =  ( corrTS * nom4 - nom5 ) / ( d5 - corrTS * d4 );
+  }
+
+  if (abs(corrT)<0.5) {
+    return corrT;
+  }
+  else if (corrT>0.5) {
+    return 0.5;
+  }
+  else if (corrT<-0.5) {
+    return -0.5;
+  }
+
+  return 0;
 }
 
 void HcalDeterministicFit::phase1Apply(const HBHEChannelInfo& channelData,
@@ -126,6 +163,7 @@ void HcalDeterministicFit::phase1Apply(const HBHEChannelInfo& channelData,
 
   float i4=0;
   float n4=0;
+
   float i5=0;
   float n5=0;
 
@@ -151,6 +189,33 @@ void HcalDeterministicFit::phase1Apply(const HBHEChannelInfo& channelData,
     getLandauFrac(-tsShift5+tsWidth,-tsShift5+tsWidth*2,n5);
   }
 
+  if (useDbPulseShapes_) {
+    float sum3=pulseShapeInfo_.getPulseFracNorm(inputCharge[3],0);
+    float sum4=pulseShapeInfo_.getPulseFracNorm(inputCharge[4],0);
+    float sum5=pulseShapeInfo_.getPulseFracNorm(inputCharge[5],0);
+
+    i3=pulseShapeInfo_.getPulseFrac(inputCharge[3],0,4)/sum3;
+    n3=pulseShapeInfo_.getPulseFrac(inputCharge[3],0,5)/sum3;
+    nn3=pulseShapeInfo_.getPulseFrac(inputCharge[3],0,6)/sum3;
+
+    i4=pulseShapeInfo_.getPulseFrac(inputCharge[4],0,4)/sum4;
+    n4=pulseShapeInfo_.getPulseFrac(inputCharge[4],0,5)/sum4;
+
+    i5=pulseShapeInfo_.getPulseFrac(inputCharge[5],0,4)/sum5;
+    n5=pulseShapeInfo_.getPulseFrac(inputCharge[5],0,5)/sum5;
+  }
+  else {
+    getLandauFrac(-tsShift3,-tsShift3+tsWidth,i3);
+    getLandauFrac(-tsShift3+tsWidth,-tsShift3+tsWidth*2,n3);
+    getLandauFrac(-tsShift3+tsWidth*2,-tsShift3+tsWidth*3,nn3);
+    
+    getLandauFrac(-tsShift4,-tsShift4+tsWidth,i4);
+    getLandauFrac(-tsShift4+tsWidth,-tsShift4+tsWidth*2,n4);
+    
+    getLandauFrac(-tsShift5,-tsShift5+tsWidth,i5);
+    getLandauFrac(-tsShift5+tsWidth,-tsShift5+tsWidth*2,n5);
+  }
+
   if (i3 != 0 && i4 != 0 && i5 != 0) {
 
     ch3=corrCharge[3]/i3;
@@ -163,24 +228,31 @@ void HcalDeterministicFit::phase1Apply(const HBHEChannelInfo& channelData,
       ch5=(i4*corrCharge[5]-n4*corrCharge[4])/(i4*i5);
     }
     if (ch5<negThresh[0] && ch4>negThresh[1]) {
-      double ratio = (corrCharge[4]-ch3*i3)/(corrCharge[5]-negThresh[0]*i5);
-      if (ratio < 5 && ratio > 0.5) {
-        double invG = invGpar[0]+invGpar[1]*std::sqrt(2*std::log(invGpar[2]/ratio));
-        float iG=0;
-
-	if(channelData.hasTimeInfo() && channelData.recoShape()==205) {
-	  get205Frac(-invG,-invG+tsWidth,iG);
-	} else {
-	  getLandauFrac(-invG,-invG+tsWidth,iG);
+      if (useDbPulseShapes_) {
+	float newTS = (corrCharge[5]-negThresh[0]*i5)/(corrCharge[4]-ch3*i3);
+	float newT = getNegativeEnergyCorr(corrCharge[4], newTS);
+	float i4_new = pulseShapeInfo_.getPulseFrac(corrCharge[4],newT,4)/pulseShapeInfo_.getPulseFracNorm(corrCharge[4],newT);
+	
+	if (i4_new!=0){
+	  ch5=negThresh[0];
+	  ch4=(corrCharge[4]-ch3*n3)/(i4_new);
 	}
-	if (iG != 0 ) {
-	  ch4=(corrCharge[4]-ch3*n3)/(iG);
-	  tsShift4=invG;
+      }
+      else {
+	double ratio = (corrCharge[4]-ch3*i3)/(corrCharge[5]-negThresh[0]*i5);
+	if (ratio < 5 && ratio > 0.5) {
+	  double invG = invGpar[0]+invGpar[1]*std::sqrt(2*std::log(invGpar[2]/ratio));
+	  float iG=0;
+	  getLandauFrac(-invG,-invG+tsWidth,iG);
+	  if (iG != 0 ) {
+	    ch4=(corrCharge[4]-ch3*n3)/(iG);
+	    tsShift4=invG;
+	  }
 	}
       }
     }
   }
-
+  
   if (ch4<1) {
     ch4=0;
   }

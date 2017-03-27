@@ -6,6 +6,7 @@
 
 #include "CalibCalorimetry/HcalAlgos/interface/HcalTimeSlew.h"
 #include "RecoLocalCalo/HcalRecAlgos/interface/PedestalSub.h"
+#include "RecoLocalCalo/HcalRecAlgos/interface/NewPulseShapes.h"
 
 #include "DataFormats/HcalDetId/interface/HcalDetId.h"
 #include "DataFormats/HcalRecHit/interface/HBHEChannelInfo.h"
@@ -19,6 +20,7 @@ class HcalDeterministicFit {
   ~HcalDeterministicFit();
 
   void init(HcalTimeSlew::ParaSource tsParam, HcalTimeSlew::BiasSetting bias, bool iApplyTimeSlew, PedestalSub pedSubFxn_, std::vector<double> pars, double respCorr);
+  void configurePulseShapes(NewPulseShapes pulseShapeInfo);
 
   void phase1Apply(const HBHEChannelInfo& channelData,
 		   float& reconstructedEnergy,
@@ -29,12 +31,15 @@ class HcalDeterministicFit {
   void apply(const CaloSamples & cs, const std::vector<int> & capidvec, const HcalCalibrations & calibs, const Digi & digi, double& ampl, float &time) const;
   void getLandauFrac(float tStart, float tEnd, float &sum) const;
   void get205Frac(float tStart, float tEnd, float &sum) const;
+  float getNegativeEnergyCorr(float fC, float corrTS) const;
 
  private:
   HcalTimeSlew::ParaSource fTimeSlew;
   HcalTimeSlew::BiasSetting fTimeSlewBias;
   PedestalSub fPedestalSubFxn_;
+  NewPulseShapes pulseShapeInfo_;
   bool applyTimeSlew_;
+  bool useDbPulseShapes_;
 
   double fpars[9];
   double frespCorr;

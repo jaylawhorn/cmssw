@@ -102,6 +102,10 @@ private:
     std::unique_ptr<HcalDeterministicFit> hltOOTpuCorr_;
 
     HcalPulseShapes theHcalPulseShapes_;
+
+    //temporarily init new pulseshapes
+    std::unique_ptr<NewPulseShapes> newPulseShapes_;
+    
 };
 
 #endif // RecoLocalCalo_HcalRecAlgos_SimpleHBHEPhase1Algo_h_

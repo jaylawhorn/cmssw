@@ -21,8 +21,10 @@ SimpleHBHEPhase1Algo::SimpleHBHEPhase1Algo(
     const float phaseNS,
     const float timeShift,
     const bool correctForPhaseContainment,
+    const int pulseShapeType, 
     std::unique_ptr<PulseShapeFitOOTPileupCorrection> m2,
-    std::unique_ptr<HcalDeterministicFit> detFit)
+    std::unique_ptr<HcalDeterministicFit> detFit,
+    std::unique_ptr<DoMahiAlgo> mahi)
     : pulseCorr_(PulseContainmentFractionalError),
       firstSampleShift_(firstSampleShift),
       samplesToAdd_(samplesToAdd),
@@ -30,8 +32,10 @@ SimpleHBHEPhase1Algo::SimpleHBHEPhase1Algo(
       timeShift_(timeShift),
       runnum_(0),
       corrFPC_(correctForPhaseContainment),
+      pulseShapeType_(pulseShapeType),
       psFitOOTpuCorr_(std::move(m2)),
-      hltOOTpuCorr_(std::move(detFit))
+      hltOOTpuCorr_(std::move(detFit)),
+      psFitMAHIOOTpuCorr_(std::move(mahi))
 {
   newPulseShapes_ = std::make_unique<NewPulseShapes>();
 }
@@ -125,6 +129,18 @@ HBHERecHit SimpleHBHEPhase1Algo::reconstruct(const HBHEChannelInfo& info,
       }
       m3E *= hbminusCorrectionFactor(channelId, m3E, isData);
     }
+
+    // Run "MAHI"
+    float m10E = 0.f, chi2_mahi = -1.f;
+    DoMahiAlgo* mahi = psFitMAHIOOTpuCorr_.get();
+    if (mahi)
+    {
+      //      psFitMAHIOOTpuCorr_->setPulseShapeTemplate();
+
+      mahi->phase1Apply(info,m10E,chi2_mahi);
+      m10E *= hbminusCorrectionFactor(channelId, m10E, isData);      
+    }
+
 
     // Finally, construct the rechit
     float rhE = m0E;

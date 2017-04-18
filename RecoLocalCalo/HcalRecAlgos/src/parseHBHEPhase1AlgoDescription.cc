@@ -74,6 +74,13 @@ parseHBHEMethod3Description(const edm::ParameterSet& conf)
     return fit;
 }
 
+static std::unique_ptr<DoMahiAlgo>
+parseHBHEMahiDescription(const edm::ParameterSet& conf)
+{
+  std::unique_ptr<DoMahiAlgo> corr =  std::make_unique<DoMahiAlgo>();
+  return corr;
+ }
+
 
 std::unique_ptr<AbsHBHEPhase1Algo>
 parseHBHEPhase1AlgoDescription(const edm::ParameterSet& ps)
@@ -92,13 +99,20 @@ parseHBHEPhase1AlgoDescription(const edm::ParameterSet& ps)
         if (ps.getParameter<bool>("useM3"))
             detFit = parseHBHEMethod3Description(ps);
 
+	
+	std::unique_ptr<DoMahiAlgo> mahi;
+	if (ps.getParameter<bool>("useMahi"))
+	  mahi = parseHBHEMahiDescription(ps);
+
+
         algo = std::unique_ptr<AbsHBHEPhase1Algo>(
             new SimpleHBHEPhase1Algo(ps.getParameter<int>   ("firstSampleShift"),
                                      ps.getParameter<int>   ("samplesToAdd"),
                                      ps.getParameter<double>("correctionPhaseNS"),
                                      ps.getParameter<double>("tdcTimeShift"),
                                      ps.getParameter<bool>  ("correctForPhaseContainment"),
-                                     std::move(m2), std::move(detFit))
+				     ps.getParameter<int>   ("pulseShapeType"),
+                                     std::move(m2), std::move(detFit), std::move(mahi))
             );
     }
 

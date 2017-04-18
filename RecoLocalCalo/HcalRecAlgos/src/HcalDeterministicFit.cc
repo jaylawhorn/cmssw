@@ -168,7 +168,7 @@ void HcalDeterministicFit::phase1Apply(const HBHEChannelInfo& channelData,
   float n4=0;
 
   float i5=0;
-  float n5=0;
+  float n5=0;  
 
   if(channelData.hasTimeInfo() && channelData.recoShape()==205) {
     get205Frac(-tsShift3,-tsShift3+tsWidth,i3);
@@ -188,6 +188,33 @@ void HcalDeterministicFit::phase1Apply(const HBHEChannelInfo& channelData,
     getLandauFrac(-tsShift4,-tsShift4+tsWidth,i4);
     getLandauFrac(-tsShift4+tsWidth,-tsShift4+tsWidth*2,n4);
 
+    getLandauFrac(-tsShift5,-tsShift5+tsWidth,i5);
+    getLandauFrac(-tsShift5+tsWidth,-tsShift5+tsWidth*2,n5);
+  }
+
+  if (useDbPulseShapes_) {
+    float sum3=pulseShapeInfo_.getPulseFracNorm(inputCharge[3],0);
+    float sum4=pulseShapeInfo_.getPulseFracNorm(inputCharge[4],0);
+    float sum5=pulseShapeInfo_.getPulseFracNorm(inputCharge[5],0);
+
+    i3=pulseShapeInfo_.getPulseFrac(inputCharge[3],0,4)/sum3;
+    n3=pulseShapeInfo_.getPulseFrac(inputCharge[3],0,5)/sum3;
+    nn3=pulseShapeInfo_.getPulseFrac(inputCharge[3],0,6)/sum3;
+
+    i4=pulseShapeInfo_.getPulseFrac(inputCharge[4],0,4)/sum4;
+    n4=pulseShapeInfo_.getPulseFrac(inputCharge[4],0,5)/sum4;
+
+    i5=pulseShapeInfo_.getPulseFrac(inputCharge[5],0,4)/sum5;
+    n5=pulseShapeInfo_.getPulseFrac(inputCharge[5],0,5)/sum5;
+  }
+  else {
+    getLandauFrac(-tsShift3,-tsShift3+tsWidth,i3);
+    getLandauFrac(-tsShift3+tsWidth,-tsShift3+tsWidth*2,n3);
+    getLandauFrac(-tsShift3+tsWidth*2,-tsShift3+tsWidth*3,nn3);
+    
+    getLandauFrac(-tsShift4,-tsShift4+tsWidth,i4);
+    getLandauFrac(-tsShift4+tsWidth,-tsShift4+tsWidth*2,n4);
+    
     getLandauFrac(-tsShift5,-tsShift5+tsWidth,i5);
     getLandauFrac(-tsShift5+tsWidth,-tsShift5+tsWidth*2,n5);
   }

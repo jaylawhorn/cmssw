@@ -8,36 +8,13 @@
 
 void eigen_solve_submatrix(PulseMatrix& mat, PulseVector& invec, PulseVector& outvec, unsigned NP);
 
-void DoMahiAlgo::setPulseShapeTemplate(bool useCSV, std::string filename="") {
+void DoMahiAlgo::configurePulseShapes(NewPulseShapes pulseShapeInfo) {
 
-  if (_useCSV) return;
-  if (useCSV && filename!="") {
-    std::ifstream ifs;
-    ifs.open(filename.c_str());
-    assert(ifs.is_open());
-    std::string line;
-
-    int i = 0;
-    while(getline(ifs,line)) {
-      if(line[0]=='#') continue;
-      
-      std::string tmpStr;
-      std::stringstream ss(line);
-      ss >> tmpStr; 
-      minCharge_[i] = std::atoi(tmpStr.c_str());
-      ss >> tmpStr;
-      maxCharge_[i] = std::atoi(tmpStr.c_str());
-      for (int k=0; k<10; k++) { ss >> tmpStr; pulseFrac_[i][k] = std::atof(tmpStr.c_str()); }
-      for (int k=0; k<10; k++) { ss >> tmpStr; pulseFracDeriv_[i][k] = std::atof(tmpStr.c_str()); }
-
-      i++;
-
-    }
-  }
-  _useCSV = useCSV;
+  pulseShapeInfo_ = pulseShapeInfo;
 
 }
 
+/*
 void DoMahiAlgo::getPulseShape(float q, HcalDetId detID, float t, SampleVector &pulseShape, float sigma=0) {
 
   if (!_useCSV) {
@@ -66,9 +43,9 @@ void DoMahiAlgo::getPulseShape(float q, HcalDetId detID, float t, SampleVector &
   }
 
 }
+*/
 
-
-void DoMahiAlgo::Apply(const CaloSamples & cs, const std::vector<int> & capidvec, const HcalDetId & detID, const HcalCalibrations & calibs, std::vector<double> & correctedOutput) {
+void DoMahiAlgo::Apply(const CaloSamples & cs, const std::vector<int> & capidvec, const HcalDetId & detID, const HcalCalibrations & calibs, std::vector<float> & correctedOutput) {
 
   const unsigned int cssize = cs.size();
 
@@ -92,7 +69,7 @@ void DoMahiAlgo::Apply(const CaloSamples & cs, const std::vector<int> & capidvec
     }
   }
 
-  std::vector<double> fitParsVec;
+  std::vector<float> fitParsVec;
 
   _detID = detID;
 
@@ -114,9 +91,7 @@ void DoMahiAlgo::Apply(const CaloSamples & cs, const std::vector<int> & capidvec
 }  
 
 void DoMahiAlgo::phase1Apply(const HBHEChannelInfo& channelData,
-			     float& reconstructedEnergy,
-			     //			     float& chi2) const {
-			     float& chi2) {
+			     std::vector<float>& reconstructedVals) {
 
   const unsigned cssize = channelData.nSamples();
 
@@ -140,25 +115,20 @@ void DoMahiAlgo::phase1Apply(const HBHEChannelInfo& channelData,
     }
   }
 
-  std::vector<double> fitParsVec;
-
   _detID = channelData.id();
 
   bool status =false;
   if(tstrig >= 0) {
-    status = DoFit(charges, gains, fitParsVec); //
+    status = DoFit(charges, gains, reconstructedVals); //
   }
 
   if (!status) {
-    fitParsVec.clear();
-    fitParsVec.push_back(0.);
-    fitParsVec.push_back(0.);
-    fitParsVec.push_back(0.);
-    fitParsVec.push_back(999.);
+    reconstructedVals.clear();
+    reconstructedVals.push_back(0.); //energy IT
+    reconstructedVals.push_back(0.); // energy next
+    reconstructedVals.push_back(0.); // energy previous
+    reconstructedVals.push_back(-9999); // chi2
   }
-
-  reconstructedEnergy = fitParsVec[0];
-  chi2 = fitParsVec[3];
 
   /*
   if(tsTOTen>20) std::cout << " --> ID=" << channelData.id() << " depth=" << channelData.id().depth() << " eta=" << channelData.id().ieta() << " phi=" << channelData.id().iphi() << std::endl;
@@ -175,7 +145,7 @@ void DoMahiAlgo::phase1Apply(const HBHEChannelInfo& channelData,
 }
 
 
-bool DoMahiAlgo::DoFit(SampleVector amplitudes, SampleVector gains, std::vector<double> &correctedOutput) {
+bool DoMahiAlgo::DoFit(SampleVector amplitudes, SampleVector gains, std::vector<float> &correctedOutput) {
 
   _nP = 0;
   //ECAL does it better -- to be fixed
@@ -350,7 +320,8 @@ bool DoMahiAlgo::NNLS() {
   //std::cout << _ampVec << std::endl;
   for (uint i=0; i<npulse; i++) {
     double nomT = _bxs.coeff(i)*25;
-    getPulseShape(_ampVec.coeff(i), _detID, nomT, pulseShape,0);
+    // this should be set with the new pulse shape
+    //    getPulseShape(_ampVec.coeff(i), _detID, nomT, pulseShape,0);
     _pulseMat.col(i) = pulseShape.segment<10>(0);
   }
 
@@ -501,9 +472,10 @@ bool DoMahiAlgo::UpdateCov() {
     double nomT = _bxs.coeff(k)*25;
     int maxTS = 4+_bxs.coeff(k);
 
-    getPulseShape(ifC, _detID, nomT, pulseShape,0); 
-    getPulseShape(ifC, _detID, nomT+deltaT, pulseShapeP,0);  
-    getPulseShape(ifC, _detID, nomT-deltaT, pulseShapeM,0);
+    // note: this should be set with the newPulseShape
+    //    getPulseShape(ifC, _detID, nomT, pulseShape,0); 
+    //    getPulseShape(ifC, _detID, nomT+deltaT, pulseShapeP,0);  
+    //    getPulseShape(ifC, _detID, nomT-deltaT, pulseShapeM,0);
 
     for (int xx=0; xx<10; xx++) {
       pulseShape.coeffRef(xx) = pulseShape.coeff(xx)/pulseShape.coeff(maxTS);
@@ -609,6 +581,6 @@ void eigen_solve_submatrix(PulseMatrix& mat, PulseVector& invec, PulseVector& ou
 }
 
 DoMahiAlgo::DoMahiAlgo() {
-  pulseShapeObj = PulseShapes();
+  //  pulseShapeObj = PulseShapes();
   deltaT = 2.5;
 }

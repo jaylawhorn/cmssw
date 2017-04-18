@@ -189,6 +189,7 @@ namespace FitterFuncs{
 	    funcHPDShape(pulse_shape_, pars[i+2],pars[i*2+1],psFit_slew[time]);
 	  else 
 	    funcNewShape(pulse_shape_, pars[i*2],pars[i*2+1]);
+
 	  // add an uncertainty from the pulse (currently noise * pulse height =>Ecal uses full cov)
 	 /////
 	  for (j=0; j<nbins; ++j) {
@@ -364,9 +365,15 @@ void PulseShapeFitOOTPileupCorrection::resetPulseShapeTemplate(const HcalPulseSh
 
 }
 
-void PulseShapeFitOOTPileupCorrection::newSetPulseShapeTemplate(NewPulseShapes pulseShapeInfo) {
-  setChi2Term(true);
-  newResetPulseShapeTemplate(pulseShapeInfo);
+void PulseShapeFitOOTPileupCorrection::newSetPulseShapeTemplate(NewPulseShapes pulseShapeInfo, bool isHPD) {
+
+  if (!(&pulseShapeInfo == currentNewPulseShape_ && isHPD == isCurrentChannelHPD_))
+    {
+      setChi2Term(isHPD);
+      newResetPulseShapeTemplate(pulseShapeInfo);
+      currentNewPulseShape_ = &pulseShapeInfo;
+      isCurrentChannelHPD_ = isHPD;
+    }
 }
 
 void PulseShapeFitOOTPileupCorrection::newResetPulseShapeTemplate(NewPulseShapes pulseShapeInfo) {
@@ -374,10 +381,10 @@ void PulseShapeFitOOTPileupCorrection::newResetPulseShapeTemplate(NewPulseShapes
 
   psfPtr_.reset(new FitterFuncs::PulseShapeFunctor(pulseShapeInfo,pedestalConstraint_,timeConstraint_,addPulseJitter_,applyTimeSlew_,
 						   pulseJitter_,timeMean_,timeSig_,pedMean_,pedSig_,noise_));
-  spfunctor_    = new ROOT::Math::Functor(psfPtr_.get(),&FitterFuncs::PulseShapeFunctor::singlePulseShapeFunc, 3);
-  dpfunctor_    = new ROOT::Math::Functor(psfPtr_.get(),&FitterFuncs::PulseShapeFunctor::doublePulseShapeFunc, 5);
-  tpfunctor_    = new ROOT::Math::Functor(psfPtr_.get(),&FitterFuncs::PulseShapeFunctor::triplePulseShapeFunc, 7);
-  
+  spfunctor_    = std::unique_ptr<ROOT::Math::Functor>( new ROOT::Math::Functor(psfPtr_.get(),&FitterFuncs::PulseShapeFunctor::singlePulseShapeFunc, 3) );
+  dpfunctor_    = std::unique_ptr<ROOT::Math::Functor>( new ROOT::Math::Functor(psfPtr_.get(),&FitterFuncs::PulseShapeFunctor::doublePulseShapeFunc, 5) );
+  tpfunctor_    = std::unique_ptr<ROOT::Math::Functor>( new ROOT::Math::Functor(psfPtr_.get(),&FitterFuncs::PulseShapeFunctor::triplePulseShapeFunc, 7) );
+
 }
 
 void PulseShapeFitOOTPileupCorrection::apply(const CaloSamples & cs,

@@ -6,8 +6,9 @@
 #include "CalibFormats/HcalObjects/interface/HcalCalibrations.h"
 #include "CalibFormats/HcalObjects/interface/HcalCoder.h"
 #include "RecoLocalCalo/HcalRecAlgos/interface/EigenMatrixTypes.h"
-#include "RecoLocalCalo/HcalRecAlgos/interface/PulseShapes.h"
+//#include "RecoLocalCalo/HcalRecAlgos/interface/PulseShapes.h"
 #include "DataFormats/HcalRecHit/interface/HBHEChannelInfo.h"
+#include "RecoLocalCalo/HcalRecAlgos/interface/NewPulseShapes.h"
 
 /*namespace HcalConst{
 
@@ -33,22 +34,25 @@ class DoMahiAlgo
   }
 
   // FIXME: need to convert the correctedOutput to memory free
-  void Apply(const CaloSamples & cs, const std::vector<int> & capidvec, const HcalDetId & detID, const HcalCalibrations & calibs, std::vector<double> & correctedOutput);
+  void Apply(const CaloSamples & cs, const std::vector<int> & capidvec, const HcalDetId & detID, const HcalCalibrations & calibs, std::vector<float> & correctedOutput);
   //  void phase1Apply(const HBHEChannelInfo& channelData, float& reconstructedEnergy, float& chi2) const;
-  void phase1Apply(const HBHEChannelInfo& channelData, float& reconstructedEnergy, float& chi2);
+  void phase1Apply(const HBHEChannelInfo& channelData, std::vector<float>& reconstructedVals);
   
-  bool DoFit(SampleVector amplitudes, SampleVector gains, std::vector<double> &correctedOutput);
+  bool DoFit(SampleVector amplitudes, SampleVector gains, std::vector<float> &correctedOutput);
 
-  void setPulseShapeTemplate(bool useCSV, std::string filename);
+  //  void setPulseShapeTemplate(bool useCSV, std::string filename);
+  void configurePulseShapes(NewPulseShapes pulseShapeInfo);
 
  private:
+
+  NewPulseShapes pulseShapeInfo_;
   
   bool Minimize();
   bool UpdateCov();
   double CalculateChiSq();
   bool NNLS();
 
-  void getPulseShape(float q, HcalDetId detID, float t, SampleVector &pulseShape, float sigma);
+  //  void getPulseShape(float q, HcalDetId detID, float t, SampleVector &pulseShape, float sigma);
 
   SampleVector _amplitudes;
   SampleMatrix _invCovMat;
@@ -94,7 +98,7 @@ class DoMahiAlgo
   PulseMatrix _topleft_work;
   PulseDecompLDLT _pulseDecomp;
 
-  PulseShapes pulseShapeObj;
+  //  PulseShapes pulseShapeObj;
 
   double deltaT;
 

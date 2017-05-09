@@ -52,7 +52,7 @@ class DoMahiAlgo
   double CalculateChiSq();
   bool NNLS();
 
-  //  void getPulseShape(float q, HcalDetId detID, float t, SampleVector &pulseShape, float sigma);
+  void getPulseShape(float q, HcalDetId detID, float t, SampleVector &pulseShape, float sigma);
 
   SampleVector _amplitudes;
   SampleMatrix _invCovMat;

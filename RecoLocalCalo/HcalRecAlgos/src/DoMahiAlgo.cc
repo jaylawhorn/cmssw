@@ -14,36 +14,31 @@ void DoMahiAlgo::configurePulseShapes(NewPulseShapes pulseShapeInfo) {
 
 }
 
-/*
 void DoMahiAlgo::getPulseShape(float q, HcalDetId detID, float t, SampleVector &pulseShape, float sigma=0) {
 
-  if (!_useCSV) {
-    pulseShapeObj.computeLAGShape(q, detID, t, pulseShape, sigma);
+  int offsetTS=0;
+  float newT=t;
+  if (abs(t)<12.5) {
+    offsetTS=0;
+    newT=t;
   }
-  else {
-    int chargeBin = -1;
-    for (int i=0; i<58; i++) {
-      if (q>minCharge_[i] && q<maxCharge_[i]) chargeBin=i;
-    }
-    if (q>maxCharge_[57]) chargeBin=57; 
-    if (chargeBin==-1) chargeBin=0;
-    
-    int dt= (t/25);
-    for (int i=0; i<10; i++) {
-      if (i-dt<0 ||i-dt>9) pulseShape.coeffRef(i-dt) = 0;
-      else {
-	if (pulseFrac_[chargeBin][i] > 1e-6) {
-	  pulseShape.coeffRef(i-dt) = pulseFrac_[chargeBin][i-dt] + (t-dt*25)*pulseFracDeriv_[chargeBin][i-dt];
-	}
-	else {
-	  pulseShape.coeffRef(i-dt)=0;
-	}
-      }
-    }
+  else if (abs(t-25)<12.5) {
+    offsetTS=-1;
+    newT=t-25;
+  }
+  else if (abs(t+25)<12.5) {
+    offsetTS=1;
+    newT=t+25;
+  }
+
+  float sum=pulseShapeInfo_.getPulseFracNorm(q,newT);
+
+  for (int i=0; i<10; i++) {
+    if (q<0 || i+offsetTS>9 || i+offsetTS<0) pulseShape[i]=0;
+    else pulseShape[i] = pulseShapeInfo_.getPulseFrac(q,newT,i+offsetTS)/sum;
   }
 
 }
-*/
 
 void DoMahiAlgo::Apply(const CaloSamples & cs, const std::vector<int> & capidvec, const HcalDetId & detID, const HcalCalibrations & calibs, std::vector<float> & correctedOutput) {
 
@@ -119,7 +114,7 @@ void DoMahiAlgo::phase1Apply(const HBHEChannelInfo& channelData,
 
   bool status =false;
   if(tstrig >= 0) {
-    status = DoFit(charges, gains, reconstructedVals); //
+    status = DoFit(charges, gains, reconstructedVals); 
   }
 
   if (!status) {
@@ -141,7 +136,6 @@ void DoMahiAlgo::phase1Apply(const HBHEChannelInfo& channelData,
   }
   */
 
-
 }
 
 
@@ -154,10 +148,6 @@ bool DoMahiAlgo::DoFit(SampleVector amplitudes, SampleVector gains, std::vector<
   _bxs << -1,0,1;
   _nPulseTot = _bxs.rows();
 
-  //_nPulseTot = _bxs.rows();
-  //_bxs = bxs;
-  //_bxs.resize(3);
-  //_bxs << -1,0,1;
   //_detID = HcalDetId(detID.rawId());
     
   _amplitudes = amplitudes;
@@ -166,9 +156,9 @@ bool DoMahiAlgo::DoFit(SampleVector amplitudes, SampleVector gains, std::vector<
   _ampVec = PulseVector::Zero(_nPulseTot);
   _errVec = PulseVector::Zero(_nPulseTot);
 
-  _ampVec.coeffRef(0) = _amplitudes.coeff(3);
-  _ampVec.coeffRef(1) = _amplitudes.coeff(4);
-  _ampVec.coeffRef(2) = _amplitudes.coeff(5);
+  _ampVec.coeffRef(0) = 0;//_amplitudes.coeff(3);
+  _ampVec.coeffRef(1) = 0;//_amplitudes.coeff(4);
+  _ampVec.coeffRef(2) = 0;//_amplitudes.coeff(5);
 
   _chiSq = 9999;
 
@@ -177,9 +167,6 @@ bool DoMahiAlgo::DoFit(SampleVector amplitudes, SampleVector gains, std::vector<
   wVec.resize(_nPulseTot);
 
   pulseShape = PulseVector::Zero(10);
-  //pulseShapeObj.computeLAGShape(_amplitudes.coeff(3), 0, -25, pulseShape,0);
-  //pulseShapeObj.computeLAGShape(_amplitudes.coeff(4), 0, 0, pulseShape,0);
-  //pulseShapeObj.computeLAGShape(_amplitudes.coeff(5), 0, 25, pulseShape,0);
   _pulseMat.col(0) = pulseShape.segment<10>(0);
   _pulseMat.col(1) = pulseShape.segment<10>(0);
   _pulseMat.col(2) = pulseShape.segment<10>(0);
@@ -212,59 +199,54 @@ bool DoMahiAlgo::DoFit(SampleVector amplitudes, SampleVector gains, std::vector<
   }
   if (!foundintime) return status;
 
-  //std::cout << "------" << std::endl;
-  //std::cout << "input: " ;
-  //for (int i=0; i<10; i++) {
-  //std::cout << _amplitudes.coeff(i) << ", ";
-  //}
-  //std::cout << std::endl;
+  std::cout << "------" << std::endl;
+  std::cout << "input: " ;
+  for (int i=0; i<10; i++) {
+    std::cout << _amplitudes.coeff(i) << ", ";
+  }
+  std::cout << std::endl;
 
-  //std::vector<double> ans;
+  std::vector<double> ans;
 
-  //std::cout << "output: ";// << std::endl;
-  //std::cout << _ampVec.coeff(ipulseprevtime) << ", " << _ampVec.coeff(ipulseintime) << ", " << _ampVec.coeff(ipulsenexttime) << std::endl;
-  /*std::cout << "output we care about: ";
+  std::cout << "output: ";
+  std::cout << _ampVec.coeff(ipulseprevtime) << ", " << _ampVec.coeff(ipulseintime) << ", " << _ampVec.coeff(ipulsenexttime) << std::endl;
+  std::cout << "output we care about: " << std::endl;
 
-  pulseShapeObj.computeLAGShape(_ampVec.coeff(ipulseprevtime), _detID, -25, pulseShape,0);
+  getPulseShape(_ampVec.coeff(ipulseprevtime), _detID, -25, pulseShape,0); 
+  std::cout << "prev: ";
   for (int i=0; i<10; i++) {
     ans.push_back(_ampVec.coeff(ipulseprevtime)*pulseShape.coeff(i));
     std::cout << _ampVec.coeff(ipulseprevtime)*pulseShape.coeff(i) << ", ";
   }
   std::cout << std::endl;
 
-  pulseShapeObj.computeLAGShape(_ampVec.coeff(ipulseintime), _detID, 0, pulseShape,0);
+  std::cout << "intime: ";
+  getPulseShape(_ampVec.coeff(ipulseintime), _detID, 0, pulseShape,0);
   for (int i=0; i<10; i++) {
-    ans[i]+=_ampVec.coeff(ipulseintime)*pulseShape.coeff(i);
+    ans[i]+= _ampVec.coeff(ipulseintime)*pulseShape.coeff(i);
     std::cout << _ampVec.coeff(ipulseintime)*pulseShape.coeff(i) << ", ";
   }
   std::cout << std::endl;
 
-  pulseShapeObj.computeLAGShape(_ampVec.coeff(ipulsenexttime), _detID, 25, pulseShape,0);
+  std::cout << "next: ";
+  getPulseShape(_ampVec.coeff(ipulsenexttime), _detID, 25, pulseShape,0);
   for (int i=0; i<10; i++) {
-    ans[i]+=_ampVec.coeff(ipulsenexttime)*pulseShape.coeff(i);
+    ans[i]+= _ampVec.coeff(ipulsenexttime)*pulseShape.coeff(i);
     std::cout << _ampVec.coeff(ipulsenexttime)*pulseShape.coeff(i) << ", ";
   }
   std::cout << std::endl;
+  std::cout << "SUMMED ANSWER: " << std::endl;
   for (int i=0; i<10; i++) {
     std::cout << ans[i] << ", ";
   }
   std::cout << std::endl;
-  */
-  //std::cout << "chi2: " ;
-  //std::cout << _chiSq << std::endl;
-  //std::cout << "-----------" << std::endl;
 
-  //const unsigned int ipulseintimemin = ipulseintime;
-  /*
-  return _ampVec.coeff(ipulseintime);
-
-  //return true;
-  */
+  std::cout << "chi2: " ;
+  std::cout << _chiSq << std::endl;
 
   double gain=gains.coeff(4); // this is the same for each TS
 
   correctedOutput.clear();
-  //  correctedOutput.push_back(_ampVec.coeff(ipulseintime)); //charge
   correctedOutput.push_back(_ampVec.coeff(ipulseintime)*gain); //energy
   correctedOutput.push_back(_ampVec.coeff(ipulsenexttime)*gain); //energy TEMPORARY
   correctedOutput.push_back(_ampVec.coeff(ipulseprevtime)*gain); //energy TEMPORARY
@@ -321,7 +303,7 @@ bool DoMahiAlgo::NNLS() {
   for (uint i=0; i<npulse; i++) {
     double nomT = _bxs.coeff(i)*25;
     // this should be set with the new pulse shape
-    //    getPulseShape(_ampVec.coeff(i), _detID, nomT, pulseShape,0);
+    getPulseShape(_ampVec.coeff(i), _detID, nomT, pulseShape,0); 
     _pulseMat.col(i) = pulseShape.segment<10>(0);
   }
 
@@ -352,7 +334,8 @@ bool DoMahiAlgo::NNLS() {
 	break;
       }
       
-      if (iter>=500) {
+      //if (iter>=500) {
+      if (iter>=50) {
 	std::cout << "Max Iterations reached!" << std::endl;
 	break;
       }
@@ -438,9 +421,6 @@ bool DoMahiAlgo::NNLS() {
 bool DoMahiAlgo::UpdateCov() {
   //std::cout << "start update Cov" << std::endl;
 
-  // FIXME:
-  // terms below are only for the HPD
-
   ////////
   // THIS IS THE ELECTONIC noise
 
@@ -451,13 +431,13 @@ bool DoMahiAlgo::UpdateCov() {
   // THIS IS THE electronic noise + ADC granularity + photoStatistics
 
   for (int i=0; i<10; i++) {
-    //std::cout << _amplitudes.coeff(i) << std::endl;
     double ifC=_amplitudes.coeff(i);
     double sigma = 0;
     if(ifC < 75) sigma = (0.577 + 0.0686*ifC)/3.; 
     else sigma = (2.75  + 0.0373*ifC + 3e-6*ifC*ifC)/3.; 
 
     double sigma2 = ifC/sqrt(ifC/0.3305);
+    if (ifC<1) sigma2=1/sqrt(1/0.3305);
     _invCovMat(i, i) += (1 + sigma*sigma + sigma2*sigma2);
 
   }
@@ -468,32 +448,36 @@ bool DoMahiAlgo::UpdateCov() {
   for (int k=0; k<_ampVec.size(); k++) {
     double ifC=_ampVec.coeff(k);
     if (ifC==0) continue;
-    
     double nomT = _bxs.coeff(k)*25;
     int maxTS = 4+_bxs.coeff(k);
 
     // note: this should be set with the newPulseShape
-    //    getPulseShape(ifC, _detID, nomT, pulseShape,0); 
-    //    getPulseShape(ifC, _detID, nomT+deltaT, pulseShapeP,0);  
-    //    getPulseShape(ifC, _detID, nomT-deltaT, pulseShapeM,0);
+    getPulseShape(ifC, _detID, nomT, pulseShape,0); 
+    getPulseShape(ifC, _detID, nomT+deltaT, pulseShapeP,0); 
+    getPulseShape(ifC, _detID, nomT-deltaT, pulseShapeM,0); 
 
     for (int xx=0; xx<10; xx++) {
-      pulseShape.coeffRef(xx) = pulseShape.coeff(xx)/pulseShape.coeff(maxTS);
-      pulseShapeP.coeffRef(xx) = pulseShapeP.coeff(xx)/pulseShapeP.coeff(maxTS);
-      pulseShapeM.coeffRef(xx) = pulseShapeM.coeff(xx)/pulseShapeM.coeff(maxTS);
+      if (pulseShape.coeff(maxTS)==0) pulseShape.coeffRef(xx)=0;
+      else pulseShape.coeffRef(xx) =  pulseShape.coeff(xx)/pulseShape.coeff(maxTS);
+
+      if (pulseShapeP.coeff(maxTS)==0) pulseShape.coeffRef(xx)=0;
+      else pulseShapeP.coeffRef(xx) = pulseShapeP.coeff(xx)/pulseShapeP.coeff(maxTS);
+
+      if (pulseShapeM.coeff(maxTS)==0) pulseShape.coeffRef(xx)=0;
+      else pulseShapeM.coeffRef(xx) = pulseShapeM.coeff(xx)/pulseShapeM.coeff(maxTS);
     }
 
-    //if (nomT!=0) std::cout << _invCovMat << std::endl << "---" << std::endl;
     for (int i=0; i<10; i++) {
       for (int j=0; j<i+1; j++) {
 	double tmp=0.5*((pulseShapeP.coeff(i)-pulseShape.coeff(i))*(pulseShapeP.coeff(j)-pulseShape.coeff(j)) 
 			+ (pulseShapeM.coeff(i)-pulseShape.coeff(i))*(pulseShapeM.coeff(j)-pulseShape.coeff(j)));
+	//std::cout << i << ", " << j << ", " << tmp << std::endl;
 	_invCovMat(i,j) += ifC*ifC*tmp;
 	_invCovMat(j,i) += ifC*ifC*tmp;
 	
       }
     }
-    //if (nomT!=0)std::cout << _invCovMat << std::endl;
+    //if (nomT==0)std::cout << _invCovMat << std::endl;
 
   }
   //std::cout << "cov" << std::endl;

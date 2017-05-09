@@ -145,7 +145,6 @@ HBHERecHit SimpleHBHEPhase1Algo::reconstruct(const HBHEChannelInfo& info,
     DoMahiAlgo* mahi = psFitMAHIOOTpuCorr_.get();
     if (mahi)
     {
-
       mahi->configurePulseShapes(*newPulseShapes_);
 
       std::vector<float> tmpResult;

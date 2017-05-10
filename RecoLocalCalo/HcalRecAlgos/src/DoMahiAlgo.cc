@@ -141,6 +141,8 @@ void DoMahiAlgo::phase1Apply(const HBHEChannelInfo& channelData,
 
 bool DoMahiAlgo::DoFit(SampleVector amplitudes, SampleVector gains, std::vector<float> &correctedOutput) {
 
+  bool verbose=false;
+
   _nP = 0;
   //ECAL does it better -- to be fixed
   // https://github.com/cms-sw/cmssw/blob/CMSSW_8_1_X/RecoLocalCalo/EcalRecProducers/plugins/EcalUncalibRecHitWorkerMultiFit.cc#L151-L171
@@ -199,51 +201,57 @@ bool DoMahiAlgo::DoFit(SampleVector amplitudes, SampleVector gains, std::vector<
   }
   if (!foundintime) return status;
 
-  std::cout << "------" << std::endl;
-  std::cout << "input: " ;
-  for (int i=0; i<10; i++) {
-    std::cout << _amplitudes.coeff(i) << ", ";
+  if(verbose) {
+    std::cout << "------" << std::endl;
+    std::cout << "input: " ;
+    for (int i=0; i<10; i++) {
+      std::cout << _amplitudes.coeff(i) << ", ";
+    }
+    std::cout << std::endl;
+
+    std::cout << "output: ";
+    std::cout << _ampVec.coeff(ipulseprevtime) << ", " << _ampVec.coeff(ipulseintime) << ", " << _ampVec.coeff(ipulsenexttime) << std::endl;
+    std::cout << "output we care about: " << std::endl;
+   
   }
-  std::cout << std::endl;
 
   std::vector<double> ans;
 
-  std::cout << "output: ";
-  std::cout << _ampVec.coeff(ipulseprevtime) << ", " << _ampVec.coeff(ipulseintime) << ", " << _ampVec.coeff(ipulsenexttime) << std::endl;
-  std::cout << "output we care about: " << std::endl;
-
   getPulseShape(_ampVec.coeff(ipulseprevtime), _detID, -25, pulseShape,0); 
-  std::cout << "prev: ";
+  if(verbose) std::cout << "prev: ";
   for (int i=0; i<10; i++) {
     ans.push_back(_ampVec.coeff(ipulseprevtime)*pulseShape.coeff(i));
-    std::cout << _ampVec.coeff(ipulseprevtime)*pulseShape.coeff(i) << ", ";
+    if(verbose) std::cout << _ampVec.coeff(ipulseprevtime)*pulseShape.coeff(i) << ", ";
   }
-  std::cout << std::endl;
+  if(verbose) std::cout << std::endl;
 
-  std::cout << "intime: ";
+  if(verbose) std::cout << "intime: ";
   getPulseShape(_ampVec.coeff(ipulseintime), _detID, 0, pulseShape,0);
   for (int i=0; i<10; i++) {
     ans[i]+= _ampVec.coeff(ipulseintime)*pulseShape.coeff(i);
-    std::cout << _ampVec.coeff(ipulseintime)*pulseShape.coeff(i) << ", ";
+    if(verbose) std::cout << _ampVec.coeff(ipulseintime)*pulseShape.coeff(i) << ", ";
   }
-  std::cout << std::endl;
+  if(verbose) std::cout << std::endl;
 
-  std::cout << "next: ";
+  if(verbose) std::cout << "next: ";
   getPulseShape(_ampVec.coeff(ipulsenexttime), _detID, 25, pulseShape,0);
   for (int i=0; i<10; i++) {
     ans[i]+= _ampVec.coeff(ipulsenexttime)*pulseShape.coeff(i);
-    std::cout << _ampVec.coeff(ipulsenexttime)*pulseShape.coeff(i) << ", ";
+    if(verbose) std::cout << _ampVec.coeff(ipulsenexttime)*pulseShape.coeff(i) << ", ";
   }
-  std::cout << std::endl;
-  std::cout << "SUMMED ANSWER: " << std::endl;
-  for (int i=0; i<10; i++) {
-    std::cout << ans[i] << ", ";
+
+  if(verbose) {
+    std::cout << std::endl;
+    std::cout << "SUMMED ANSWER: " << std::endl;
+    for (int i=0; i<10; i++) {
+      std::cout << ans[i] << ", ";
+    }
+    std::cout << std::endl;
+    
+    std::cout << "chi2: " ;
+    std::cout << _chiSq << std::endl;
   }
-  std::cout << std::endl;
-
-  std::cout << "chi2: " ;
-  std::cout << _chiSq << std::endl;
-
+  
   double gain=gains.coeff(4); // this is the same for each TS
 
   correctedOutput.clear();

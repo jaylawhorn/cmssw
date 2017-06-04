@@ -103,8 +103,8 @@ HBHERecHit SimpleHBHEPhase1Algo::reconstruct(const HBHEChannelInfo& info,
       // These parameters are pased by non-const reference.
       method2->phase1Apply(info, tmpResult, useTriple);
       if (tmpResult.size() != 0) {
-	m2t = tmpResult.at(0);
-	m2E = tmpResult.at(1);
+	m2E = tmpResult.at(0);
+	m2t = tmpResult.at(1);
 	chi2 = tmpResult.at(3);
       }
       else {

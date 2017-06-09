@@ -1,5 +1,6 @@
 import FWCore.ParameterSet.Config as cms
 
+from DQMOffline.Trigger.razorHemispheres_cff import *
 from DQMOffline.Trigger.RazorMonitor_cfi import hltRazorMonitoring
 
 # HLT_RsqMR300_Rsq0p09_MR200_v6
@@ -8,6 +9,8 @@ RsqMR300_Rsq0p09_MR200_RazorMonitoring.FolderName = cms.string('HLT/SUSY/RsqMR30
 RsqMR300_Rsq0p09_MR200_RazorMonitoring.numGenericTriggerEventPSet.hltPaths = cms.vstring("HLT_RsqMR300_Rsq0p09_MR200_v*")
 
 susyHLTRazorMonitoring = cms.Sequence(
-    RsqMR300_Rsq0p09_MR200_RazorMonitoring
+        cms.ignore(hemispheres)+ #for razor triggers
+        cms.ignore(caloHemispheres)+ #for razor triggers
+        RsqMR300_Rsq0p09_MR200_RazorMonitoring
 )
 

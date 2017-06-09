@@ -6,12 +6,6 @@
 
 #include "CommonTools/TriggerUtils/interface/GenericTriggerEventFlag.h"
 
-
-double MAX_DPHIR_ = 3.2;
-int N_DPHIR = 64;
-const MEbinning dPhiR_binning_{
-  N_DPHIR, -MAX_DPHIR_, MAX_DPHIR_
-};
 // -----------------------------
 //  constructors and destructor
 // -----------------------------
@@ -21,10 +15,8 @@ RazorMonitor::RazorMonitor( const edm::ParameterSet& iConfig ) :
   , metToken_             ( consumes<reco::PFMETCollection>      (iConfig.getParameter<edm::InputTag>("met")       ) )   
   , jetToken_             ( mayConsume<reco::PFJetCollection>      (iConfig.getParameter<edm::InputTag>("jets")      ) )   
   , eleToken_             ( mayConsume<reco::GsfElectronCollection>(iConfig.getParameter<edm::InputTag>("electrons") ) )   
-  , muoToken_             ( mayConsume<reco::MuonCollection>       (iConfig.getParameter<edm::InputTag>("muons")     ) )   
-  , met_variable_binning_ ( iConfig.getParameter<edm::ParameterSet>("histoPSet").getParameter<std::vector<double> >("metBinning") )
-  , met_binning_          ( getHistoPSet   (iConfig.getParameter<edm::ParameterSet>("histoPSet").getParameter<edm::ParameterSet>   ("metPSet")    ) )
-  , ls_binning_           ( getHistoLSPSet (iConfig.getParameter<edm::ParameterSet>("histoPSet").getParameter<edm::ParameterSet>   ("lsPSet")     ) )
+  , muoToken_             ( mayConsume<reco::MuonCollection>       (iConfig.getParameter<edm::InputTag>("muons")     ) ) 
+  //, ls_binning_           ( getHistoLSPSet (iConfig.getParameter<edm::ParameterSet>("histoPSet").getParameter<edm::ParameterSet>   ("lsPSet")     ) )
   , num_genTriggerEventFlag_(new GenericTriggerEventFlag(iConfig.getParameter<edm::ParameterSet>("numGenericTriggerEventPSet"),consumesCollector(), *this))
   , den_genTriggerEventFlag_(new GenericTriggerEventFlag(iConfig.getParameter<edm::ParameterSet>("denGenericTriggerEventPSet"),consumesCollector(), *this))
   , metSelection_ ( iConfig.getParameter<std::string>("metSelection") )
@@ -36,30 +28,37 @@ RazorMonitor::RazorMonitor( const edm::ParameterSet& iConfig ) :
   , nmuons_     ( iConfig.getParameter<int>("nmuons" )     )
 {
 
-  metME_.numerator   = nullptr;
-  metME_.denominator = nullptr;
-  metME_variableBinning_.numerator   = nullptr;
-  metME_variableBinning_.denominator = nullptr;
-  metVsLS_.numerator   = nullptr;
-  metVsLS_.denominator = nullptr;
-  metPhiME_.numerator   = nullptr;
-  metPhiME_.denominator = nullptr;
-  
+  theHemispheres_ = consumes<std::vector<math::XYZTLorentzVector> >(iConfig.getParameter<edm::InputTag>("hemispheres"));
+
+  mr_binning_.nbins = 10;
+  mr_binning_.xmin = 0;
+  mr_binning_.xmax = 1000;
+  rsq_binning_.nbins=10;
+  rsq_binning_.xmin=0;
+  rsq_binning_.xmax=1;
+  dphiR_binning_.nbins=10;
+  dphiR_binning_.xmin=-3.2;
+  dphiR_binning_.xmax=3.2;
+
+  MR_ME_.numerator = nullptr;
+  MR_ME_.denominator = nullptr;
+  MRVsLS_.numerator = nullptr;
+  MRVsLS_.denominator = nullptr;
+  Rsq_ME_.numerator = nullptr;
+  Rsq_ME_.denominator = nullptr;
+  RsqVsLS_.numerator = nullptr;
+  RsqVsLS_.denominator = nullptr;
+  dPhiR_ME_.numerator = nullptr;
+  dPhiR_ME_.denominator = nullptr;
+  dPhiRVsLS_.numerator = nullptr;
+  dPhiRVsLS_.denominator = nullptr;
+
 }
 
 RazorMonitor::~RazorMonitor()
 {
   if (num_genTriggerEventFlag_) delete num_genTriggerEventFlag_;
   if (den_genTriggerEventFlag_) delete den_genTriggerEventFlag_;
-}
-
-MEbinning RazorMonitor::getHistoPSet(edm::ParameterSet pset)
-{
-  return MEbinning{
-    pset.getParameter<int32_t>("nbins"),
-      pset.getParameter<double>("xmin"),
-      pset.getParameter<double>("xmax"),
-      };
 }
 
 MEbinning RazorMonitor::getHistoLSPSet(edm::ParameterSet pset)
@@ -126,21 +125,30 @@ void RazorMonitor::bookHistograms(DQMStore::IBooker     & ibooker,
   std::string currentFolder = folderName_ ;
   ibooker.setCurrentFolder(currentFolder.c_str());
 
-  histname = "met"; histtitle = "PFMET";
-  bookME(ibooker,metME_,histname,histtitle,met_binning_.nbins,met_binning_.xmin, met_binning_.xmax);
-  setMETitle(metME_,"PF MET [GeV]","events / [GeV]");
+  histname = "MR"; histtitle = "PF MR";
+  bookME(ibooker,MR_ME_,histname,histtitle,mr_binning_.nbins,mr_binning_.xmin, mr_binning_.xmax);
+  setMETitle(MR_ME_,"PF M_R [GeV]","events / [GeV]");
 
-  histname = "met_variable"; histtitle = "PFMET";
-  bookME(ibooker,metME_variableBinning_,histname,histtitle,met_variable_binning_);
-  setMETitle(metME_variableBinning_,"PF MET [GeV]","events / [GeV]");
+  histname = "MRVsLS"; histtitle = "PF MR vs LS";
+  bookME(ibooker,MRVsLS_,histname,histtitle,ls_binning_.nbins, ls_binning_.xmin, ls_binning_.xmax, mr_binning_.xmin, mr_binning_.xmax);
+  setMETitle(MRVsLS_,"LS","PF M_R [GeV]");
 
-  histname = "metVsLS"; histtitle = "PFMET vs LS";
-  bookME(ibooker,metVsLS_,histname,histtitle,ls_binning_.nbins, ls_binning_.xmin, ls_binning_.xmax,met_binning_.xmin, met_binning_.xmax);
-  setMETitle(metVsLS_,"LS","PF MET [GeV]");
+  histname = "Rsq"; histtitle = "PF Rsq";
+  bookME(ibooker,Rsq_ME_,histname,histtitle,rsq_binning_.nbins,rsq_binning_.xmin, rsq_binning_.xmax);
+  setMETitle(Rsq_ME_,"PF R^2","events");
 
-  histname = "metPhi"; histtitle = "PFMET phi";
-  bookME(ibooker,metPhiME_,histname,histtitle, dPhiR_binning_.nbins, dPhiR_binning_.xmin, dPhiR_binning_.xmax);
-  setMETitle(metPhiME_,"PF MET #phi","events / 0.1 rad");
+  histname = "RsqVsLS"; histtitle = "PF Rsq vs LS";
+  bookME(ibooker,RsqVsLS_,histname,histtitle,ls_binning_.nbins, ls_binning_.xmin, ls_binning_.xmax, rsq_binning_.xmin, rsq_binning_.xmax);
+  setMETitle(RsqVsLS_,"LS","PF R^2");
+
+  histname = "dPhiR"; histtitle = "dPhiR";
+  bookME(ibooker,dPhiR_ME_,histname,histtitle,dphiR_binning_.nbins,dphiR_binning_.xmin, dphiR_binning_.xmax);
+  setMETitle(dPhiR_ME_,"dPhi_R","events");
+
+  histname = "dPhiRVsLS"; histtitle = "PF dPhiR vs LS";
+  bookME(ibooker,dPhiRVsLS_,histname,histtitle,ls_binning_.nbins, ls_binning_.xmin, ls_binning_.xmax, dphiR_binning_.xmin, dphiR_binning_.xmax);
+  setMETitle(dPhiRVsLS_,"LS","dPhi_R");
+
 
   // Initialize the GenericTriggerEventFlag
   if ( num_genTriggerEventFlag_ && num_genTriggerEventFlag_->on() ) num_genTriggerEventFlag_->initRun( iRun, iSetup );
@@ -161,9 +169,6 @@ void RazorMonitor::analyze(edm::Event const& iEvent, edm::EventSetup const& iSet
   iEvent.getByToken( metToken_, metHandle );
   reco::PFMET pfmet = metHandle->front();
   if ( ! metSelection_( pfmet ) ) return;
-  
-  float met = pfmet.pt();
-  float phi = pfmet.phi();
 
   edm::Handle<reco::PFJetCollection> jetHandle;
   iEvent.getByToken( jetToken_, jetHandle );
@@ -192,46 +197,93 @@ void RazorMonitor::analyze(edm::Event const& iEvent, edm::EventSetup const& iSet
   }
   if ( int(muons.size()) < nmuons_ ) return;
 
+  edm::Handle< vector<math::XYZTLorentzVector> > hemispheres;
+  iEvent.getByToken (theHemispheres_,hemispheres);
+
+  float HT = 0.0;
+
+  for (unsigned int i=0; i<jets.size(); i++) {
+    if(std::abs(jets.at(i).eta()) < 3.0 && jets.at(i).pt() >= 40.0){
+      HT += jets.at(i).pt();
+    }
+  }
+
+  //float met = pfmet.pt();
+  //float phi = pfmet.phi();
+
+  if (not hemispheres.isValid()){
+    return;
+  }
+
+  if(hemispheres->size() ==0){  // the Hemisphere Maker will produce an empty collection of hemispheres if # of jets is too high
+    //edm::LogError("DQM_HLT_Razor") << "Cannot calculate M_R and R^2 because there are too many jets! (trigger passed automatically without forming the hemispheres)" << 
+    //endl;
+    return;
+  }
+
+  if(hemispheres->size() != 0 && hemispheres->size() != 2 && hemispheres->size() != 5 && hemispheres->size() != 10){
+    edm::LogError("DQM_HLT_Razor") << "Invalid hemisphere collection!  hemispheres->size() = " << hemispheres->size() << endl;
+    return;
+  }
+
+  TLorentzVector ja(hemispheres->at(0).x(),hemispheres->at(0).y(),hemispheres->at(0).z(),hemispheres->at(0).t());
+  TLorentzVector jb(hemispheres->at(1).x(),hemispheres->at(1).y(),hemispheres->at(1).z(),hemispheres->at(1).t());
+
+  //dummy vector (this trigger does not care about muons)                                                                                                                  
+  std::vector<math::XYZTLorentzVector> muonVec;
+
+  double MR = CalcMR(ja,jb);
+  double R  = CalcR(MR,ja,jb,metHandle,muonVec);
+  double Rsq = R*R;
+  double dPhiR = deltaPhi(ja.Phi(), jb.Phi());
+
+  if (Rsq<0.05 && MR<300) return;
+
   // filling histograms (denominator)  
-  metME_.denominator -> Fill(met);
-  metME_variableBinning_.denominator -> Fill(met);
-  metPhiME_.denominator -> Fill(phi);
 
   int ls = iEvent.id().luminosityBlock();
-  metVsLS_.denominator -> Fill(ls, met);
-  
+
+  MR_ME_.denominator -> Fill(MR);
+  MRVsLS_.denominator -> Fill(ls, MR);
+  Rsq_ME_.denominator -> Fill(Rsq);
+  RsqVsLS_.denominator -> Fill(ls, Rsq);
+  dPhiR_ME_.denominator -> Fill(dPhiR);
+  dPhiRVsLS_.denominator -> Fill(ls, dPhiR);
+
   // applying selection for numerator
   if (num_genTriggerEventFlag_->on() && ! num_genTriggerEventFlag_->accept( iEvent, iSetup) ) return;
 
-  // filling histograms (num_genTriggerEventFlag_)  
-  metME_.numerator -> Fill(met);
-  metME_variableBinning_.numerator -> Fill(met);
-  metPhiME_.numerator -> Fill(phi);
-  metVsLS_.numerator -> Fill(ls, met);
+  MR_ME_.numerator -> Fill(MR);
+  MRVsLS_.numerator -> Fill(ls, MR);
+  Rsq_ME_.numerator -> Fill(Rsq);
+  RsqVsLS_.numerator -> Fill(ls, Rsq);
+  dPhiR_ME_.numerator -> Fill(dPhiR);
+  dPhiRVsLS_.numerator -> Fill(ls, dPhiR);
 
 }
 
-void RazorMonitor::fillHistoPSetDescription(edm::ParameterSetDescription & pset)
-{
-  pset.add<int>   ( "nbins");
-  pset.add<double>( "xmin" );
-  pset.add<double>( "xmax" );
-}
-
-void RazorMonitor::fillHistoLSPSetDescription(edm::ParameterSetDescription & pset)
-{
-  pset.add<int>   ( "nbins", 2500);
-}
+//void RazorMonitor::fillHistoPSetDescription(edm::ParameterSetDescription & pset)
+//{
+//  pset.add<int>   ( "nbins");
+//  pset.add<double>( "xmin" );
+//  pset.add<double>( "xmax" );
+//}
+//
+//void RazorMonitor::fillHistoLSPSetDescription(edm::ParameterSetDescription & pset)
+//{
+//  pset.add<int>   ( "nbins", 2500);
+//}
 
 void RazorMonitor::fillDescriptions(edm::ConfigurationDescriptions & descriptions)
 {
   edm::ParameterSetDescription desc;
-  desc.add<std::string>  ( "FolderName", "HLT/SUSY_Razor" );
+  desc.add<std::string>  ( "FolderName", "HLT/SUSY/Razor" );
 
   desc.add<edm::InputTag>( "met",      edm::InputTag("pfMet") );
   desc.add<edm::InputTag>( "jets",     edm::InputTag("ak4PFJetsCHS") );
   desc.add<edm::InputTag>( "electrons",edm::InputTag("gedGsfElectrons") );
   desc.add<edm::InputTag>( "muons",    edm::InputTag("muons") );
+  desc.add<edm::InputTag>("hemispheres",edm::InputTag("hemispheres"))->setComment("hemisphere jets used to compute razor variables");
   desc.add<std::string>("metSelection", "pt > 0");
   desc.add<std::string>("jetSelection", "pt > 0");
   desc.add<std::string>("eleSelection", "pt > 0");
@@ -257,21 +309,74 @@ void RazorMonitor::fillDescriptions(edm::ConfigurationDescriptions & description
   desc.add<edm::ParameterSetDescription>("numGenericTriggerEventPSet", genericTriggerEventPSet);
   desc.add<edm::ParameterSetDescription>("denGenericTriggerEventPSet", genericTriggerEventPSet);
 
-  edm::ParameterSetDescription histoPSet;
-  edm::ParameterSetDescription metPSet;
-  fillHistoPSetDescription(metPSet);
-  histoPSet.add<edm::ParameterSetDescription>("metPSet", metPSet);
-  std::vector<double> bins = {0.,20.,40.,60.,80.,90.,100.,110.,120.,130.,140.,150.,160.,170.,180.,190.,200.,220.,240.,260.,280.,300.,350.,400.,450.,1000.};
-  histoPSet.add<std::vector<double> >("metBinning", bins);
+  //edm::ParameterSetDescription histoPSet;
+  //edm::ParameterSetDescription metPSet;
+  //fillHistoPSetDescription(metPSet);
+  //histoPSet.add<edm::ParameterSetDescription>("metPSet", metPSet);
+  //std::vector<double> bins = {0.,20.,40.,60.,80.,90.,100.,110.,120.,130.,140.,150.,160.,170.,180.,190.,200.,220.,240.,260.,280.,300.,350.,400.,450.,1000.};
+  //histoPSet.add<std::vector<double> >("metBinning", bins);
 
-  edm::ParameterSetDescription lsPSet;
-  fillHistoLSPSetDescription(lsPSet);
-  histoPSet.add<edm::ParameterSetDescription>("lsPSet", lsPSet);
+  //edm::ParameterSetDescription lsPSet;
+  //fillHistoLSPSetDescription(lsPSet);
+  //histoPSet.add<edm::ParameterSetDescription>("lsPSet", lsPSet);
 
-  desc.add<edm::ParameterSetDescription>("histoPSet",histoPSet);
+  //desc.add<edm::ParameterSetDescription>("histoPSet",histoPSet);
 
   descriptions.add("razorMonitoring", desc);
 }
+
+//CalcMR and CalcR borrowed from HLTRFilter.cc
+double RazorMonitor::CalcMR(TLorentzVector ja, TLorentzVector jb){
+  if(ja.Pt()<=0.1) return -1;
+
+  ja.SetPtEtaPhiM(ja.Pt(),ja.Eta(),ja.Phi(),0.0);
+  jb.SetPtEtaPhiM(jb.Pt(),jb.Eta(),jb.Phi(),0.0);
+
+  if(ja.Pt() > jb.Pt()){
+    TLorentzVector temp = ja;
+    ja = jb;
+    jb = temp;
+  }
+
+  double A = ja.P();
+  double B = jb.P();
+  double az = ja.Pz();
+  double bz = jb.Pz();
+  TVector3 jaT, jbT;
+  jaT.SetXYZ(ja.Px(),ja.Py(),0.0);
+  jbT.SetXYZ(jb.Px(),jb.Py(),0.0);
+  double ATBT = (jaT+jbT).Mag2();
+
+  double MR = sqrt((A+B)*(A+B)-(az+bz)*(az+bz)-
+                   (jbT.Dot(jbT)-jaT.Dot(jaT))*(jbT.Dot(jbT)-jaT.Dot(jaT))/(jaT+jbT).Mag2());
+  double mybeta = (jbT.Dot(jbT)-jaT.Dot(jaT))/
+    sqrt(ATBT*((A+B)*(A+B)-(az+bz)*(az+bz)));
+
+  double mygamma = 1./sqrt(1.-mybeta*mybeta);
+
+  //use gamma times MRstar
+  return MR*mygamma;
+}
+
+double RazorMonitor::CalcR(double MR, TLorentzVector ja, TLorentzVector jb, edm::Handle<std::vector<reco::PFMET> > inputMet, const std::vector<math::XYZTLorentzVector>& muons){
+  //now we can calculate MTR
+  TVector3 met;
+  met.SetPtEtaPhi((inputMet->front()).pt(),0.0,(inputMet->front()).phi());
+
+  std::vector<math::XYZTLorentzVector>::const_iterator muonIt;
+  for(muonIt = muons.begin(); muonIt!=muons.end(); muonIt++){
+    TVector3 tmp;
+    tmp.SetPtEtaPhi(muonIt->pt(),0,muonIt->phi());
+    met-=tmp;
+  }
+
+  double MTR = sqrt(0.5*(met.Mag()*(ja.Pt()+jb.Pt()) - met.Dot(ja.Vect()+jb.Vect())));
+
+  //filter events
+  return float(MTR)/float(MR); //R
+}
+
+
 
 // Define this as a plug-in
 #include "FWCore/Framework/interface/MakerMacros.h"

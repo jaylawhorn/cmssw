@@ -37,6 +37,12 @@
 #include "DataFormats/EgammaCandidates/interface/Photon.h"
 #include "DataFormats/EgammaCandidates/interface/PhotonFwd.h"
 
+//Hemispheres                                                                                                                                                                  
+#include "HLTrigger/JetMET/interface/HLTRHemisphere.h"
+#include "DataFormats/Math/interface/LorentzVector.h"
+#include "DataFormats/Math/interface/deltaPhi.h"
+#include "TLorentzVector.h"
+
 class GenericTriggerEventFlag;
 
 struct MEbinning {
@@ -59,8 +65,11 @@ public:
   RazorMonitor( const edm::ParameterSet& );
   ~RazorMonitor();
   static void fillDescriptions(edm::ConfigurationDescriptions & descriptions);
-  static void fillHistoPSetDescription(edm::ParameterSetDescription & pset);
-  static void fillHistoLSPSetDescription(edm::ParameterSetDescription & pset);
+  //static void fillHistoPSetDescription(edm::ParameterSetDescription & pset);
+  //static void fillHistoLSPSetDescription(edm::ParameterSetDescription & pset);
+
+  static double CalcMR(TLorentzVector ja,TLorentzVector jb);
+  static double CalcR(double MR, TLorentzVector ja,TLorentzVector jb, edm::Handle<std::vector<reco::PFMET> > met, const std::vector<math::XYZTLorentzVector>& muons);
 
 protected:
 
@@ -75,7 +84,6 @@ protected:
   void analyze(edm::Event const& iEvent, edm::EventSetup const& iSetup) override;
 
 private:
-  static MEbinning getHistoPSet    (edm::ParameterSet pset);
   static MEbinning getHistoLSPSet  (edm::ParameterSet pset);
 
   std::string folderName_;
@@ -85,15 +93,19 @@ private:
   edm::EDGetTokenT<reco::PFJetCollection>       jetToken_;
   edm::EDGetTokenT<reco::GsfElectronCollection> eleToken_;
   edm::EDGetTokenT<reco::MuonCollection>        muoToken_;
+  edm::EDGetTokenT<std::vector<math::XYZTLorentzVector> > theHemispheres_;
 
-  std::vector<double> met_variable_binning_;
-  MEbinning           met_binning_;
+  MEbinning           mr_binning_;
+  MEbinning           rsq_binning_;
+  MEbinning           dphiR_binning_;
   MEbinning           ls_binning_;
 
-  RazorME metME_;
-  RazorME metME_variableBinning_;
-  RazorME metVsLS_;
-  RazorME metPhiME_;
+  RazorME MR_ME_;
+  RazorME MRVsLS_;
+  RazorME Rsq_ME_;
+  RazorME RsqVsLS_;
+  RazorME dPhiR_ME_;
+  RazorME dPhiRVsLS_;
 
   GenericTriggerEventFlag* num_genTriggerEventFlag_;
   GenericTriggerEventFlag* den_genTriggerEventFlag_;

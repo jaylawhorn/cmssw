@@ -22,7 +22,8 @@ SimpleHBHEPhase1Algo::SimpleHBHEPhase1Algo(
     const float timeShift,
     const bool correctForPhaseContainment,
     std::unique_ptr<PulseShapeFitOOTPileupCorrection> m2,
-    std::unique_ptr<HcalDeterministicFit> detFit)
+    std::unique_ptr<HcalDeterministicFit> detFit,
+    std::unique_ptr<DoMahiAlgo> mahi)
     : pulseCorr_(PulseContainmentFractionalError),
       firstSampleShift_(firstSampleShift),
       samplesToAdd_(samplesToAdd),
@@ -31,7 +32,8 @@ SimpleHBHEPhase1Algo::SimpleHBHEPhase1Algo(
       runnum_(0),
       corrFPC_(correctForPhaseContainment),
       psFitOOTpuCorr_(std::move(m2)),
-      hltOOTpuCorr_(std::move(detFit))
+      hltOOTpuCorr_(std::move(detFit)),
+      psFitMAHIOOTpuCorr_(std::move(mahi))
 {
 }
 
@@ -96,6 +98,37 @@ HBHERecHit SimpleHBHEPhase1Algo::reconstruct(const HBHEChannelInfo& info,
         m3E *= hbminusCorrectionFactor(channelId, m3E, isData);
     }
 
+
+    // Run "Mahi"
+    float m10E = 0.f, chi2_mahi = -1.f;
+    float m10T = 0.f;
+    bool useTriple_mahi = false;
+    const DoMahiAlgo* mahi = psFitMAHIOOTpuCorr_.get();
+
+    if(mahi) {
+
+      if(info.hasTimeInfo()) {
+
+	std::cout << "need to set up the MAHI shape and run the algo"  << std::endl;
+	//	psFitMAHIOOTpuCorr_->setPulseShapeTemplate() << endl;
+	//	mahi->phase1Apply(info,m10E,chi2_mahi);
+	//	m10E *= hbminusCorrectionFactor(channelId, m10E, isData);
+
+      } else {
+
+	/// if HPD do the Method2
+	if(method2) {
+	  psFitOOTpuCorr_->setPulseShapeTemplate(theHcalPulseShapes_.getShape(info.recoShape()),
+						 !info.hasTimeInfo());
+	  // "phase1Apply" call below sets m2E, m2t, useTriple, and chi2.
+	  // These parameters are pased by non-const reference.
+	  method2->phase1Apply(info, m10E, m10T, useTriple_mahi, chi2_mahi);
+	  m2E *= hbminusCorrectionFactor(channelId, m2E, isData);
+	}
+      }
+    }
+
+
     // Finally, construct the rechit
     float rhE = m0E;
     float rht = m0t;
@@ -109,6 +142,12 @@ HBHERecHit SimpleHBHEPhase1Algo::reconstruct(const HBHEChannelInfo& info,
         rhE = m3E;
         rht = m3t;
     }
+    else if (mahi)
+    {
+      rhE = m10E;
+    }
+
+
     float tdcTime = info.soiRiseTime();
     if (!HcalSpecialTimes::isSpecial(tdcTime))
         tdcTime += timeShift_;

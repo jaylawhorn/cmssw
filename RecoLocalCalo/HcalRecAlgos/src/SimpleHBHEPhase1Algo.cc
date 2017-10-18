@@ -142,9 +142,11 @@ HBHERecHit SimpleHBHEPhase1Algo::reconstruct(const HBHEChannelInfo& info,
         rhE = m3E;
         rht = m3t;
     }
-    else if (mahi)
+
+    if (mahi)
     {
       rhE = m10E;
+      rht = 0;
     }
 
     //std::cout << "--------" << std::endl;
@@ -157,7 +159,7 @@ HBHERecHit SimpleHBHEPhase1Algo::reconstruct(const HBHEChannelInfo& info,
         tdcTime += timeShift_;
     rh = HBHERecHit(channelId, rhE, rht, tdcTime);
     rh.setRawEnergy(m0E);
-    rh.setAuxEnergy(m3E);
+    rh.setAuxEnergy(m2E);
     rh.setChiSquared(chi2);
 
     // Set rechit aux words

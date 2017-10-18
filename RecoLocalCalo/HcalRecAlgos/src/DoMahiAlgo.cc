@@ -5,7 +5,7 @@
 void eigen_solve_submatrix(PulseMatrix& mat, PulseVector& invec, PulseVector& outvec, unsigned NP);
 
 DoMahiAlgo::DoMahiAlgo() { 
-  std::cout << "hai komrad" << std::endl;
+  std::cout << "hai" << std::endl;
 }
 
 void DoMahiAlgo::phase1Apply(const HBHEChannelInfo& channelData) {
@@ -75,10 +75,18 @@ bool DoMahiAlgo::DoFit(SampleVector amplitudes, SampleVector gains, std::vector<
   aTaMat.resize(_nPulseTot, _nPulseTot);
   aTbVec.resize(_nPulseTot);
   wVec.resize(_nPulseTot);
+  
+  pulseShape = PulseVector::Zero(12);
+  
+  const double xx[4]={0.0, 1.0, 0.0, 3};
+  (*pfunctor_)(&xx[0]);
+  
+  for (int i=-1; i<11; i++) {
+    pulseShape.coeffRef(i+1) = psfPtr_->getPulseShape(i);
+  }
 
-  pulseShape = PulseVector::Zero(10);
-  _pulseMat.col(0) = pulseShape.segment<10>(0);
-  _pulseMat.col(1) = pulseShape.segment<10>(0);
+  _pulseMat.col(0) = pulseShape.segment<10>(2);
+  _pulseMat.col(1) = pulseShape.segment<10>(1);
   _pulseMat.col(2) = pulseShape.segment<10>(0);
 
   std::cout << "initial pulseMat" << std::endl;
@@ -115,10 +123,13 @@ bool DoMahiAlgo::DoFit(SampleVector amplitudes, SampleVector gains, std::vector<
     std::cout << _amplitudes.coeff(i) << ", ";
   }
   std::cout << std::endl;
-  std::cout << ipulseintime << ", " << ipulseprevtime << ", " << ipulsenexttime << std::endl;
+  //std::cout << ipulseintime << ", " << ipulseprevtime << ", " << ipulsenexttime << std::endl;
 
-    //std::vector<double> ans;
+  std::cout << "output: ";
+  std::cout << _ampVec.coeff(ipulseprevtime) << ", " << _ampVec.coeff(ipulseintime) << ", " << _ampVec.coeff(ipulsenexttime) << std::endl;
 
+  //std::vector<double> ans;
+  
 
   return status;
 }
@@ -137,11 +148,11 @@ bool DoMahiAlgo::Minimize() {
       break;
     }
     
-    bool status=UpdateCov();
-    //if (!status) break;
+    status=UpdateCov();
+    if (!status) break;
     
     status = NNLS();
-    //if (!status) break;
+    if (!status) break;
     
     double newChiSq=CalculateChiSq();
     double deltaChiSq = newChiSq - _chiSq;
@@ -164,8 +175,49 @@ bool DoMahiAlgo::UpdateCov() {
 
   const double pederr2 = 1;
   _invCovMat = pederr2*SampleMatrix::Constant(1);
-  _covDecomp.compute(_invCovMat);
 
+  FullSampleVector pulseShapeM = FullSampleVector::Zero(12);
+  FullSampleVector pulseShapeP = FullSampleVector::Zero(12);
+
+  const double xxm[4]={-2.5, 1.0, 0.0, 3};
+  const double xxp[4]={ 2.5, 1.0, 0.0, 3};
+  (*pfunctor_)(&xxm[0]);
+  for (int i=-1; i<11; i++) {
+    pulseShapeM.coeffRef(i+1) = psfPtr_->getPulseShape(i);
+  }
+
+  (*pfunctor_)(&xxp[0]);
+  for (int i=-1; i<11; i++) {
+    pulseShapeP.coeffRef(i+1) = psfPtr_->getPulseShape(i);
+  }
+
+  for (int k=0; k<_ampVec.size(); k++) {
+
+    double ifC=_ampVec.coeff(k);
+    if (ifC==0) continue;
+
+    //1-int(_bxs.coeff(i)
+
+    int startV=1-int(_bxs.coeff(k));
+
+    //std::cout << "startV: " << startV << std::endl;
+
+    for (int i=startV; i<10+startV; i++) {
+      for (int j=startV; j<i+1; j++) {
+	//std::cout << i << ", " << j << std::endl;
+	double tmp=0.5*((pulseShapeP.coeff(i)-pulseShape.coeff(i))*(pulseShapeP.coeff(j)-pulseShape.coeff(j)) 
+			+ (pulseShapeM.coeff(i)-pulseShape.coeff(i))*(pulseShapeM.coeff(j)-pulseShape.coeff(j)));
+	_invCovMat(i-startV,j-startV) += ifC*ifC*tmp;
+	_invCovMat(j-startV,i-startV) += ifC*ifC*tmp;
+	
+      }
+    }
+    
+    
+  }
+  
+  _covDecomp.compute(_invCovMat);
+  
   return true;
 }
 
@@ -176,10 +228,11 @@ bool DoMahiAlgo::NNLS() {
   
   std::cout << _ampVec << std::endl;
   for (uint i=0; i<npulse; i++) {
-    double nomT = _bxs.coeff(i)*25;
-    pulseShape=PulseVector::Zero(10);
+    //std::cout << double(_bxs.coeff(i)) << std::endl;
+    //double nomT = _bxs.coeff(i)*25;
+    //pulseShape=PulseVector::Zero(12);
     //getPulseShape(_ampVec.coeff(i), _detID, nomT, pulseShape,0);
-    _pulseMat.col(i) = pulseShape.segment<10>(0);
+    _pulseMat.col(i) = pulseShape.segment<10>(1-int(_bxs.coeff(i)));
   }
   
   std::cout << "new pulsemat" << std::endl;
@@ -298,6 +351,24 @@ double DoMahiAlgo::CalculateChiSq() {
   return _covDecomp.matrixL().solve(_pulseMat*_ampVec - _amplitudes).squaredNorm();
 
   //return 0.0;
+}
+
+void DoMahiAlgo::setPulseShapeTemplate(const HcalPulseShapes::Shape& ps) {
+
+  if (!(&ps == currentPulseShape_ ))
+    {
+      resetPulseShapeTemplate(ps);
+      currentPulseShape_ = &ps;
+    }
+}
+
+void DoMahiAlgo::resetPulseShapeTemplate(const HcalPulseShapes::Shape& ps) { 
+  ++ cntsetPulseShape;
+  psfPtr_.reset(new FitterFuncs::PulseShapeFunctor(ps,false,false,false,false,1,0,2.5,0,0.00065,1));
+  pfunctor_    = std::unique_ptr<ROOT::Math::Functor>( new ROOT::Math::Functor(psfPtr_.get(),&FitterFuncs::PulseShapeFunctor::singlePulseShapeFunc, 3) );
+  //p1functor_    = std::unique_ptr<ROOT::Math::Functor>( new ROOT::Math::Functor(psfPtr_.get(),&FitterFuncs::PulseShapeFunctor::singlePulseShapeFunc, 3) );
+  //p2functor_    = std::unique_ptr<ROOT::Math::Functor>( new ROOT::Math::Functor(psfPtr_.get(),&FitterFuncs::PulseShapeFunctor::singlePulseShapeFunc, 3) );
+
 }
 
 void eigen_solve_submatrix(PulseMatrix& mat, PulseVector& invec, PulseVector& outvec, unsigned NP) {

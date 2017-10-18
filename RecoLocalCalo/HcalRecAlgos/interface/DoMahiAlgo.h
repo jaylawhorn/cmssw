@@ -20,9 +20,9 @@ class DoMahiAlgo
   DoMahiAlgo();
   ~DoMahiAlgo() { };
 
-  void phase1Apply(const HBHEChannelInfo& channelData);//, float& reconstructedEnergy, float& chi2);
+  void phase1Apply(const HBHEChannelInfo& channelData, float& reconstructedEnergy, float& chi2);
   
-  bool DoFit(SampleVector amplitudes, SampleVector gains, std::vector<float> &correctedOutput);
+  bool DoFit(SampleVector amplitudes, std::vector<float> &correctedOutput);
 
   const HcalPulseShapes::Shape* currentPulseShape_=nullptr;
 
@@ -36,8 +36,6 @@ class DoMahiAlgo
 
   std::unique_ptr<FitterFuncs::PulseShapeFunctor> psfPtr_;
   std::unique_ptr<ROOT::Math::Functor> pfunctor_;
-  //std::unique_ptr<ROOT::Math::Functor> pMfunctor_;
-  //std::unique_ptr<ROOT::Math::Functor> pPfunctor_;
 
   bool Minimize();
   bool UpdateCov();
@@ -46,6 +44,8 @@ class DoMahiAlgo
 
   SampleVector _amplitudes;
   SampleMatrix _invCovMat;
+
+  SampleVector _pedWidth;
   
   FullSampleMatrix noiseCor;
   FullSampleMatrix pulseCov;

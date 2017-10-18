@@ -36,7 +36,7 @@ hbheprereco = cms.EDProducer(
     makeRecHits = cms.bool(True),
 
     # Flag indicating whether we should produce HBHEChannelInfoCollection
-    saveInfos = cms.bool(False),
+    saveInfos = cms.bool(True),
 
     # Flag indicating whether we should include HBHEChannelInfo objects
     # into HBHEChannelInfoCollection despite the fact that the channels
@@ -66,13 +66,13 @@ hbheprereco = cms.EDProducer(
         firstSampleShift = cms.int32(0),
 
         # Use "Method 2"?
-        useM2 = cms.bool(True),
+        useM2 = cms.bool(False),
 
         # Use "Method 3"?
-        useM3 = cms.bool(True),
+        useM3 = cms.bool(False),
 
         # Use "Mahi"?
-        useMahi = cms.bool(False)
+        useMahi = cms.bool(True)
 
     ),
 

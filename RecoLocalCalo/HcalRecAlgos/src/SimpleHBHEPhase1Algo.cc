@@ -58,7 +58,7 @@ HBHERecHit SimpleHBHEPhase1Algo::reconstruct(const HBHEChannelInfo& info,
     HBHERecHit rh;
 
     const HcalDetId channelId(info.id());
-
+    if (channelId.iphi()>60 && channelId.ieta()>16) std::cout << channelId << std::endl;
     // Calculate "Method 0" quantities
     float m0t = 0.f, m0E = 0.f;
     {
@@ -103,15 +103,15 @@ HBHERecHit SimpleHBHEPhase1Algo::reconstruct(const HBHEChannelInfo& info,
     float m10E = 0.f, chi2_mahi = -1.f;
     float m10T = 0.f;
     bool useTriple_mahi = false;
-    const DoMahiAlgo* mahi = psFitMAHIOOTpuCorr_.get();
+    DoMahiAlgo* mahi = psFitMAHIOOTpuCorr_.get();
 
     if(mahi) {
-
+      //std::cout << "???" << std::endl;
       if(info.hasTimeInfo()) {
 
 	std::cout << "need to set up the MAHI shape and run the algo"  << std::endl;
 	//	psFitMAHIOOTpuCorr_->setPulseShapeTemplate() << endl;
-	//	mahi->phase1Apply(info,m10E,chi2_mahi);
+	mahi->phase1Apply(info);//,m10E,chi2_mahi);
 	//	m10E *= hbminusCorrectionFactor(channelId, m10E, isData);
 
       } else {

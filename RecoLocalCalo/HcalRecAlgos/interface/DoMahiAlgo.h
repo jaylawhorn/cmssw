@@ -8,6 +8,8 @@
 #include "RecoLocalCalo/HcalRecAlgos/interface/EigenMatrixTypes.h"
 #include "DataFormats/HcalRecHit/interface/HBHEChannelInfo.h"
 
+#include "CalibCalorimetry/HcalAlgos/interface/HcalPulseShapes.h"
+#include "RecoLocalCalo/HcalRecAlgos/interface/PulseShapeFitOOTPileupCorrection.h"
 
 class DoMahiAlgo
 {
@@ -22,14 +24,26 @@ class DoMahiAlgo
   
   bool DoFit(SampleVector amplitudes, SampleVector gains, std::vector<float> &correctedOutput);
 
-  //void setPulseShapeTemplate();
+  const HcalPulseShapes::Shape* currentPulseShape_=nullptr;
+
+  void setPulseShapeTemplate  (const HcalPulseShapes::Shape& ps);
+  void resetPulseShapeTemplate(const HcalPulseShapes::Shape& ps);
 
  private:
+
+  //for pulse shapes
+  int cntsetPulseShape;
+
+  std::unique_ptr<FitterFuncs::PulseShapeFunctor> psfPtr_;
+  std::unique_ptr<ROOT::Math::Functor> pfunctor_;
+  //std::unique_ptr<ROOT::Math::Functor> pMfunctor_;
+  //std::unique_ptr<ROOT::Math::Functor> pPfunctor_;
 
   bool Minimize();
   bool UpdateCov();
   double CalculateChiSq();
   bool NNLS();
+
   SampleVector _amplitudes;
   SampleMatrix _invCovMat;
   
@@ -41,9 +55,7 @@ class DoMahiAlgo
   PulseVector _ampVec;
   PulseVector _ampVecMin;
   PulseVector _errVec;
-  SampleVector pulseShape;
-  SampleVector pulseShapeM;
-  SampleVector pulseShapeP;
+  FullSampleVector pulseShape;
   SampleVector zeroShape;
 
   PulseVector ampvecpermtest;

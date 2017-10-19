@@ -128,6 +128,13 @@ HBHERecHit SimpleHBHEPhase1Algo::reconstruct(const HBHEChannelInfo& info,
       }
     }
 
+    if (m10E <1 && m2E > 10) {
+      std::cout << "-------" << std::endl;
+      std::cout << m10E << ", " << m2E << std::endl;
+      std::cout << info.tsRawCharge(3)*info.tsGain(0) << ", " << info.tsRawCharge(4)*info.tsGain(0) << ", " << info.tsRawCharge(5)*info.tsGain(0) << std::endl;
+
+    }
+
 
     // Finally, construct the rechit
     float rhE = m0E;

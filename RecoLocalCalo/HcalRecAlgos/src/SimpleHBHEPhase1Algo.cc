@@ -110,7 +110,7 @@ HBHERecHit SimpleHBHEPhase1Algo::reconstruct(const HBHEChannelInfo& info,
       if(info.hasTimeInfo()) {
 
         psFitMAHIOOTpuCorr_->setPulseShapeTemplate(theHcalPulseShapes_.getShape(info.recoShape()));
-
+	mahi->setDebug(-1);
 	mahi->phase1Apply(info,m10E,chi2_mahi);
 	m10E *= hbminusCorrectionFactor(channelId, m10E, isData);
 	
@@ -128,14 +128,22 @@ HBHERecHit SimpleHBHEPhase1Algo::reconstruct(const HBHEChannelInfo& info,
       }
     }
 
-    if (m10E <1 && m2E > 10) {
-      std::cout << "-------" << std::endl;
-      std::cout << m10E << ", " << m2E << std::endl;
-      std::cout << info.tsRawCharge(3)*info.tsGain(0) << ", " << info.tsRawCharge(4)*info.tsGain(0) << ", " << info.tsRawCharge(5)*info.tsGain(0) << std::endl;
+    if (m10E <1 && m2E > 10 && mahi) {
+      std::cout << "------- rerunning with debug info" << std::endl;
+      std::cout << "raw pulse shape: " << std::endl;
+      for (int ii=0; ii<10; ii++) {
+	std::cout << info.tsRawCharge(ii) << ", ";
+      }
+      std::cout << std::endl;
+      std::cout << "mahi energy, m2 energy " << std::endl;
+      std::cout << m10E/info.tsGain(0) << ", " << m2E/info.tsGain(0) << std::endl;
+
+      psFitMAHIOOTpuCorr_->setPulseShapeTemplate(theHcalPulseShapes_.getShape(info.recoShape()));
+      mahi->setDebug(1);
+      mahi->phase1Apply(info,m10E,chi2_mahi);
 
     }
-
-
+    
     // Finally, construct the rechit
     float rhE = m0E;
     float rht = m0t;
@@ -155,7 +163,7 @@ HBHERecHit SimpleHBHEPhase1Algo::reconstruct(const HBHEChannelInfo& info,
       rhE = m10E;
       rht = 0;
     }
-
+    
     //std::cout << "--------" << std::endl;
     //std::cout << "method 0: " << m0E << std::endl;
     //std::cout << "MAHI: "  << m10E << std::endl;
@@ -167,7 +175,7 @@ HBHERecHit SimpleHBHEPhase1Algo::reconstruct(const HBHEChannelInfo& info,
     rh = HBHERecHit(channelId, rhE, rht, tdcTime);
     rh.setRawEnergy(m0E);
     rh.setAuxEnergy(m2E);
-    rh.setChiSquared(chi2);
+    rh.setChiSquared(chi2_mahi);
 
     // Set rechit aux words
     HBHERecHitAuxSetter::setAux(info, &rh);

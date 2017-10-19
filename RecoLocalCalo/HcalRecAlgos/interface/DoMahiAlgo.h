@@ -29,9 +29,11 @@ class DoMahiAlgo
   void setPulseShapeTemplate  (const HcalPulseShapes::Shape& ps);
   void resetPulseShapeTemplate(const HcalPulseShapes::Shape& ps);
 
+  void setDebug(int val);
+
  private:
 
-  bool doDebug;
+  int doDebug;
 
   //for pulse shapes
   int cntsetPulseShape;
@@ -48,6 +50,7 @@ class DoMahiAlgo
   SampleMatrix _invCovMat;
 
   SampleVector _pedWidth;
+  double _pedConstraint;
   
   FullSampleMatrix noiseCor;
   FullSampleMatrix pulseCov;

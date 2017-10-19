@@ -540,6 +540,8 @@ void PulseShapeFitOOTPileupCorrection::phase1Apply(const HBHEChannelInfo& channe
   double tsTOTen = 0; // in GeV
   double sipmDarkCurrentWidth = psfPtr_->getSiPMDarkCurrent(channelData.darkCurrent(),channelData.fcByPE(),channelData.lambda());
 
+  //std::cout << "dark current from Method 2: " << sipmDarkCurrentWidth << ", " << channelData.darkCurrent() << ", " << channelData.fcByPE() << ", " << channelData.lambda() << std::endl;
+
   // go over the time slices
   for(unsigned int ip=0; ip<cssize; ++ip){
     if( ip >= (unsigned) HcalConst::maxSamples ) continue; // Too many samples than what we wanna fit (10 is enough...) -> skip them
@@ -575,6 +577,10 @@ void PulseShapeFitOOTPileupCorrection::phase1Apply(const HBHEChannelInfo& channe
 
     // sum all in quadrature
     noiseArrSq[ip]= noiseADCArr[ip]*noiseADCArr[ip] + noiseDCArr[ip]*noiseDCArr[ip] + channelData.tsPedestalWidth(ip)*channelData.tsPedestalWidth(ip) +  noisePHArr[ip]*noisePHArr[ip];
+
+    //std::cout << "Method 2 " << ip << ", " << charge - ped << ": " << noiseArrSq[ip] << ", ";
+    //std::cout << noiseADCArr[ip]*noiseADCArr[ip] << ", " << noiseDCArr[ip]*noiseDCArr[ip] << ", ";
+    //std::cout << channelData.tsPedestalWidth(ip)*channelData.tsPedestalWidth(ip) << ", " << noisePHArr[ip]*noisePHArr[ip] << std::endl;
 
     tsTOT += charge - ped;
     tsTOTen += energy - peden;

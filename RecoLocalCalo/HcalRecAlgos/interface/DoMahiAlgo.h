@@ -31,6 +31,8 @@ class DoMahiAlgo
 
  private:
 
+  bool doDebug;
+
   //for pulse shapes
   int cntsetPulseShape;
 

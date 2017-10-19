@@ -15,39 +15,63 @@ void DoMahiAlgo::phase1Apply(const HBHEChannelInfo& channelData,
   //std::cout << "phase1Apply" << std::endl;
   
   const unsigned cssize = channelData.nSamples();
-  //std::cout << cssize << std::endl;
 
   std::vector<float> reconstructedVals;
 
   SampleVector charges;
-  //SampleVector gains;
 
+  double darkCurrent = psfPtr_->getSiPMDarkCurrent(channelData.darkCurrent(), 
+						   channelData.fcByPE(),
+						   channelData.lambda());
+
+  //std::cout << "dark current from MAHI: " << noiseDC << ", " << channelData.darkCurrent() << ", " << channelData.fcByPE() << ", " << channelData.lambda() << std::endl;
+  
   double tsTOT = 0, tstrig = 0; // in fC
   for(unsigned int ip=0; ip<cssize; ++ip){
     if( ip >= (unsigned)10) continue; 
-    //int capid = capidvec[ip];
     double charge = channelData.tsRawCharge(ip);
     double ped = channelData.tsPedestal(ip);
-    //double gain = channelData.tsGain(ip);
 
     charges.coeffRef(ip) = charge - ped;
-    //gains.coeffRef(ip) = gain;
 
-    double noiseTerm = 1.5*1.5 //pedestal width
-      + (1./12)*pow(channelData.tsDFcPerADC(ip),2) // ADC digitization uncertainty
-      + pow(psfPtr_->getSiPMDarkCurrent(channelData.darkCurrent(),channelData.fcByPE(),channelData.lambda()),2); // dark current noise
+    double noiseADC = (1./sqrt(12))*channelData.tsDFcPerADC(ip);
 
-    if ((charge-ped)>channelData.tsPedestalWidth(ip)) {
-      noiseTerm+=pow((charge-ped)/sqrt((charge-ped)/channelData.fcByPE()),2);
+    double noiseDC=0;
+    if(channelData.hasTimeInfo() && (charge-ped)>channelData.tsPedestalWidth(ip)) {
+      noiseDC = darkCurrent;
     }
+
+    double noisePhoto = 0;
+    if ( (charge-ped)>channelData.tsPedestalWidth(ip)) {
+      noisePhoto = sqrt((charge-ped)*channelData.fcByPE());
+    }
+
+    double pedWidth = channelData.tsPedestalWidth(ip);
+
+    double noiseTerm = noiseADC*noiseADC + noiseDC*noiseDC + noisePhoto*noisePhoto + pedWidth*pedWidth;
+
+    //double noiseTerm = 1.5*1.5 //pedestal width
+    //  + (1./12)*pow(channelData.tsDFcPerADC(ip),2) // ADC digitization uncertainty
+    //  + pow(psfPtr_->getSiPMDarkCurrent(channelData.darkCurrent(),channelData.fcByPE(),channelData.lambda()),2); // dark current noise
+    //
+    //if ((charge-ped)>channelData.tsPedestalWidth(ip)) {
+    //  noiseTerm+=pow((charge-ped)/sqrt((charge-ped)/channelData.fcByPE()),2); //photostatistics
+    //}
 
     _pedWidth.coeffRef(ip) = noiseTerm;
 
+    //std::cout << "MAHI " << ip << ", " << charge - ped << ": " << noiseTerm << ", ";
+    //std::cout << noiseADC*noiseADC << ", " << noiseDC*noiseDC << ", ";
+    //std::cout << pedWidth*pedWidth << ", " << noisePhoto*noisePhoto << std::endl;
+
     tsTOT += charge - ped;
     if( ip ==4 || ip==5 ){
-      tstrig += charge - ped;
+      tstrig += (charge - ped)*channelData.tsGain(4);
     }
   }
+
+  doDebug=false;
+  //if (tstrig>20) doDebug=true;
 
   _detID = channelData.id();
 
@@ -117,34 +141,36 @@ bool DoMahiAlgo::DoFit(SampleVector amplitudes, std::vector<float> &correctedOut
 
   bool foundintime = false;
   unsigned int ipulseintime = 0;
-  //unsigned int ipulseprevtime = 0;
-  //unsigned int ipulsenexttime = 0;
+  unsigned int ipulseprevtime = 0;
+  unsigned int ipulsenexttime = 0;
 
   for (unsigned int ipulse=0; ipulse<_nPulseTot; ++ipulse) {
     if (_bxs.coeff(ipulse)==0) {
       ipulseintime = ipulse;
       foundintime = true;
     }
-    //else if (_bxs.coeff(ipulse)==-1) {
-    //ipulseprevtime = ipulse;
-    //}
-    //else if (_bxs.coeff(ipulse)==1) {
-    //ipulsenexttime = ipulse;
-    //}
+    else if (_bxs.coeff(ipulse)==-1) {
+      ipulseprevtime = ipulse;
+    }
+    else if (_bxs.coeff(ipulse)==1) {
+      ipulsenexttime = ipulse;
+    }
   }
   if (!foundintime) return status;
 
-  //std::cout << "------" << std::endl;
-  //std::cout << "input: " ;
-  //for (int i=0; i<10; i++) {
-  //  std::cout << _amplitudes.coeff(i) << ", ";
-  //}
-  //std::cout << std::endl;
-  //std::cout << ipulseintime << ", " << ipulseprevtime << ", " << ipulsenexttime << std::endl;
+  if (doDebug) {
 
-  //std::cout << "output: ";
-  //std::cout << _ampVec.coeff(ipulseprevtime) << ", " << _ampVec.coeff(ipulseintime) << ", " << _ampVec.coeff(ipulsenexttime) << std::endl;
-
+    std::cout << "------" << std::endl;
+    std::cout << "input: " ;
+    for (int i=0; i<10; i++) {
+      std::cout << _amplitudes.coeff(i) << ", ";
+    }
+    std::cout << std::endl;
+    std::cout << ipulseintime << ", " << ipulseprevtime << ", " << ipulsenexttime << std::endl;
+    
+    std::cout << "output: ";
+    std::cout << _ampVec.coeff(ipulseprevtime) << ", " << _ampVec.coeff(ipulseintime) << ", " << _ampVec.coeff(ipulsenexttime) << std::endl;
+  }
   //std::vector<double> ans;
 
   correctedOutput.clear();
@@ -185,7 +211,7 @@ bool DoMahiAlgo::Minimize() {
     
     _chiSq = newChiSq;
     
-    //std::cout << "chiSq = " << _chiSq << ", " << deltaChiSq << std::endl;
+    if (doDebug) std::cout << "chiSq = " << _chiSq << ", " << deltaChiSq << std::endl;
     
     if (std::abs(deltaChiSq)<1e-3) break;
     
@@ -215,7 +241,7 @@ bool DoMahiAlgo::UpdateCov() {
   for (int i=-1; i<11; i++) {
     pulseShapeP.coeffRef(i+1) = psfPtr_->getPulseShape(i);
   }
-
+  //std::cout << "------" << std::endl;
   for (int k=0; k<_ampVec.size(); k++) {
 
     double ifC=_ampVec.coeff(k);
@@ -229,9 +255,12 @@ bool DoMahiAlgo::UpdateCov() {
 
     for (int i=startV; i<10+startV; i++) {
       for (int j=startV; j<i+1; j++) {
-	//std::cout << i << ", " << j << std::endl;
+
 	double tmp=0.5*((pulseShapeP.coeff(i)-pulseShape.coeff(i))*(pulseShapeP.coeff(j)-pulseShape.coeff(j)) 
 			+ (pulseShapeM.coeff(i)-pulseShape.coeff(i))*(pulseShapeM.coeff(j)-pulseShape.coeff(j)));
+	
+	//std::cout << i << ", " << j << ": " << tmp << ", " << ifC << std::endl;
+
 	_invCovMat(i-startV,j-startV) += ifC*ifC*tmp;
 	_invCovMat(j-startV,i-startV) += ifC*ifC*tmp;
 	
@@ -241,9 +270,11 @@ bool DoMahiAlgo::UpdateCov() {
     
   }
 
-  //std::cout << "cov" << std::endl;
-  //std::cout << _invCovMat << std::endl;
-  //std::cout << "..." << std::endl;
+  if (doDebug) {
+    std::cout << "cov" << std::endl;
+    std::cout << _invCovMat << std::endl;
+    std::cout << "..." << std::endl;
+  }
 
   _covDecomp.compute(_invCovMat);
   
@@ -255,14 +286,17 @@ bool DoMahiAlgo::NNLS() {
 
   const unsigned int npulse = _bxs.rows();
   
-  //std::cout << _ampVec << std::endl;
+  if (doDebug) std::cout << _ampVec << std::endl;
+
   for (uint i=0; i<npulse; i++) {
     //std::cout << double(_bxs.coeff(i)) << std::endl;
     _pulseMat.col(i) = pulseShape.segment<10>(1-int(_bxs.coeff(i)));
   }
-  
-  //std::cout << "new pulsemat" << std::endl;
-  //std::cout << _pulseMat << std::endl;
+
+  if (doDebug) {
+    std::cout << "new pulsemat" << std::endl;
+    std::cout << _pulseMat << std::endl;
+  }
   
   invcovp = _covDecomp.matrixL().solve(_pulseMat);
   aTaMat = invcovp.transpose()*invcovp;

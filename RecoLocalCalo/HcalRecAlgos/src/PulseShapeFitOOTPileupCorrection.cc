@@ -405,6 +405,8 @@ int PulseShapeFitOOTPileupCorrection::pulseShapeFit(const double * energyArr, co
    float chi2        = 999; //cannot be zero
    bool  fitStatus   = false;
    bool useTriple = false;
+   //std::cout << "method 2:";
+   //std::cout << ts4Chi2_ << ", " << ts4Max_ << std::endl;
 
    int BX[3] = {4,5,3};
    if(ts4Chi2_ != 0) fit(1,timevalfit,chargevalfit,pedvalfit,chi2,fitStatus,tsMAX,tsTOTen,tmpy,BX);

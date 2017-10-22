@@ -22,7 +22,7 @@ class DoMahiAlgo
 
   void phase1Apply(const HBHEChannelInfo& channelData, float& reconstructedEnergy, float& chi2);
   
-  bool DoFit(SampleVector amplitudes, std::vector<float> &correctedOutput);
+  bool DoFit(SampleVector amplitudes, std::vector<float> &correctedOutput, int nbx);
 
   const HcalPulseShapes::Shape* currentPulseShape_=nullptr;
 

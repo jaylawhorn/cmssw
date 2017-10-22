@@ -137,11 +137,11 @@ HBHERecHit SimpleHBHEPhase1Algo::reconstruct(const HBHEChannelInfo& info,
       std::cout << std::endl;
       std::cout << "mahi energy, m2 energy " << std::endl;
       std::cout << m10E/info.tsGain(0) << ", " << m2E/info.tsGain(0) << std::endl;
-
+      
       psFitMAHIOOTpuCorr_->setPulseShapeTemplate(theHcalPulseShapes_.getShape(info.recoShape()));
       mahi->setDebug(1);
       mahi->phase1Apply(info,m10E,chi2_mahi);
-
+      
     }
     
     // Finally, construct the rechit

@@ -60,7 +60,8 @@ HBHERecHit SimpleHBHEPhase1Algo::reconstruct(const HBHEChannelInfo& info,
     const HcalDetId channelId(info.id());
     //if (channelId.iphi()>60 && channelId.ieta()>16) std::cout << channelId << std::endl;
     // Calculate "Method 0" quantities
-    float m0t = 0.f, m0E = 0.f;
+    //float m0t = 0.f, 
+    float m0E = 0.f;
     {
         int ibeg = static_cast<int>(info.soi()) + firstSampleShift_;
         if (ibeg < 0)
@@ -71,7 +72,7 @@ HBHERecHit SimpleHBHEPhase1Algo::reconstruct(const HBHEChannelInfo& info,
         const float phasens = params ? params->correctionPhaseNS() : phaseNS_;
         m0E = m0Energy(info, fc_ampl, applyContainment, phasens, nSamplesToAdd);
         m0E *= hbminusCorrectionFactor(channelId, m0E, isData);
-        m0t = m0Time(info, fc_ampl, calibs, nSamplesToAdd);
+        //m0t = m0Time(info, fc_ampl, calibs, nSamplesToAdd);
     }
 
     // Run "Method 2"
@@ -128,7 +129,7 @@ HBHERecHit SimpleHBHEPhase1Algo::reconstruct(const HBHEChannelInfo& info,
       }
     }
 
-    if (m10E <1 && m2E > 10 && mahi) {
+    /*    if (m10E <1 && m2E > 10 && mahi) {
       std::cout << "------- rerunning with debug info" << std::endl;
       std::cout << "raw pulse shape: " << std::endl;
       for (int ii=0; ii<10; ii++) {
@@ -142,40 +143,40 @@ HBHERecHit SimpleHBHEPhase1Algo::reconstruct(const HBHEChannelInfo& info,
       mahi->setDebug(1);
       mahi->phase1Apply(info,m10E,chi2_mahi);
       
-    }
+      }*/
     
     // Finally, construct the rechit
-    float rhE = m0E;
-    float rht = m0t;
-    if (method2)
-    {
-        rhE = m2E;
-        rht = m2t;
-    }
-    else if (method3)
-    {
-        rhE = m3E;
-        rht = m3t;
-    }
-
-    if (mahi)
-    {
-      rhE = m10E;
-      rht = 0;
-    }
+//    float rhE = m0E;
+//    float rht = m0t;
+//    if (method2)
+//    {
+//        rhE = m2E;
+//        rht = m2t;
+//    }
+//    else if (method3)
+//    {
+//        rhE = m3E;
+//        rht = m3t;
+//    }
+//
+//    if (mahi)
+//    {
+//      rhE = m10E;
+//      rht = 0;
+//    }
     
     //std::cout << "--------" << std::endl;
     //std::cout << "method 0: " << m0E << std::endl;
     //std::cout << "MAHI: "  << m10E << std::endl;
 
-
+    //Yeah, such a hack
     float tdcTime = info.soiRiseTime();
     if (!HcalSpecialTimes::isSpecial(tdcTime))
         tdcTime += timeShift_;
-    rh = HBHERecHit(channelId, rhE, rht, tdcTime);
-    rh.setRawEnergy(m0E);
+    rh = HBHERecHit(channelId, m10E, chi2_mahi, tdcTime);
+    rh.setRawEnergy(m3E);
     rh.setAuxEnergy(m2E);
-    rh.setChiSquared(chi2_mahi);
+    rh.setChiSquared(chi2);
 
     // Set rechit aux words
     HBHERecHitAuxSetter::setAux(info, &rh);

@@ -86,19 +86,19 @@ void DoMahiAlgo::phase1Apply(const HBHEChannelInfo& channelData,
 
     if (reconstructedVals[1]>15 && tstrig < 45000) {
 
-      double tmpRecoE=reconstructedVals[0];
-      double tmpRecoChi2=reconstructedVals[1];
+      //double tmpRecoE=reconstructedVals[0];
+      //double tmpRecoChi2=reconstructedVals[1];
 
       if (doDebug==1) std::cout << "three pulse fit " << std::endl;
       reconstructedVals.clear();
       
       status = DoFit(charges,reconstructedVals,3); 
 
-      if (tmpRecoChi2<reconstructedVals[1]) {
-	reconstructedVals.clear();
-	reconstructedVals.push_back(tmpRecoE);
-	reconstructedVals.push_back(tmpRecoChi2);
-      }
+      //if (tmpRecoChi2<reconstructedVals[1]) {
+      //	reconstructedVals.clear();
+      //	reconstructedVals.push_back(tmpRecoE);
+      //	reconstructedVals.push_back(tmpRecoChi2);
+      //}
     }
 
   }
@@ -139,9 +139,18 @@ bool DoMahiAlgo::DoFit(SampleVector amplitudes, std::vector<float> &correctedOut
   _ampVec = PulseVector::Zero(_nPulseTot);
   _errVec = PulseVector::Zero(_nPulseTot);
 
-  for (int i=0; i<nbx; i++) {
-    _ampVec.coeffRef(i) = 0;
+  if (nbx==1) {
+    _ampVec.coeffRef(0) = _amplitudes.coeff(4)*1.3;
   }
+  else {
+    _ampVec.coeffRef(0) = _amplitudes.coeff(3)*1.3;
+    _ampVec.coeffRef(1) = _amplitudes.coeff(4)*1.3;
+    _ampVec.coeffRef(2) = _amplitudes.coeff(5)*1.3;
+  }
+
+  //for (int i=0; i<nbx; i++) {
+  //  _ampVec.coeffRef(i) = 0;
+  //}
   _chiSq = 999;
 
   aTaMat.resize(_nPulseTot, _nPulseTot);

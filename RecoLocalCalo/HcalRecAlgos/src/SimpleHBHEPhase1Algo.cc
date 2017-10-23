@@ -111,7 +111,7 @@ HBHERecHit SimpleHBHEPhase1Algo::reconstruct(const HBHEChannelInfo& info,
       if(info.hasTimeInfo()) {
 
         psFitMAHIOOTpuCorr_->setPulseShapeTemplate(theHcalPulseShapes_.getShape(info.recoShape()));
-	mahi->setDebug(-1);
+	mahi->setDebug(1);
 	mahi->phase1Apply(info,m10E,chi2_mahi);
 	m10E *= hbminusCorrectionFactor(channelId, m10E, isData);
 	
@@ -128,46 +128,6 @@ HBHERecHit SimpleHBHEPhase1Algo::reconstruct(const HBHEChannelInfo& info,
 	}
       }
     }
-
-    /*    if (m10E <1 && m2E > 10 && mahi) {
-      std::cout << "------- rerunning with debug info" << std::endl;
-      std::cout << "raw pulse shape: " << std::endl;
-      for (int ii=0; ii<10; ii++) {
-	std::cout << info.tsRawCharge(ii) << ", ";
-      }
-      std::cout << std::endl;
-      std::cout << "mahi energy, m2 energy " << std::endl;
-      std::cout << m10E/info.tsGain(0) << ", " << m2E/info.tsGain(0) << std::endl;
-      
-      psFitMAHIOOTpuCorr_->setPulseShapeTemplate(theHcalPulseShapes_.getShape(info.recoShape()));
-      mahi->setDebug(1);
-      mahi->phase1Apply(info,m10E,chi2_mahi);
-      
-      }*/
-    
-    // Finally, construct the rechit
-//    float rhE = m0E;
-//    float rht = m0t;
-//    if (method2)
-//    {
-//        rhE = m2E;
-//        rht = m2t;
-//    }
-//    else if (method3)
-//    {
-//        rhE = m3E;
-//        rht = m3t;
-//    }
-//
-//    if (mahi)
-//    {
-//      rhE = m10E;
-//      rht = 0;
-//    }
-    
-    //std::cout << "--------" << std::endl;
-    //std::cout << "method 0: " << m0E << std::endl;
-    //std::cout << "MAHI: "  << m10E << std::endl;
 
     //Yeah, such a hack
     float tdcTime = info.soiRiseTime();

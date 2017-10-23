@@ -14,65 +14,71 @@
 class DoMahiAlgo
 {
  public:
-
-  typedef BXVector::Index Index;
-  
   DoMahiAlgo();
   ~DoMahiAlgo() { };
 
-  void phase1Apply(const HBHEChannelInfo& channelData, float& reconstructedEnergy, float& chi2);
-  
+  void phase1Apply(const HBHEChannelInfo& channelData, float& reconstructedEnergy, float& chi2);  
   bool DoFit(SampleVector amplitudes, std::vector<float> &correctedOutput, int nbx);
-
-  const HcalPulseShapes::Shape* currentPulseShape_=nullptr;
 
   void setPulseShapeTemplate  (const HcalPulseShapes::Shape& ps);
   void resetPulseShapeTemplate(const HcalPulseShapes::Shape& ps);
 
   void setDebug(int val);
 
+  typedef BXVector::Index Index;
+  const HcalPulseShapes::Shape* currentPulseShape_=nullptr;
+
  private:
 
   int doDebug;
-
+  bool doDynamicPulseCov;
   //for pulse shapes
   int cntsetPulseShape;
+
+  HcalDetId _detID;
+  unsigned int _nPulseTot;
+
+  //holds active bunch crossings
+  BXVector _bxs;  
+
+  BXVector _bxsMin;
+  unsigned int _nP;
+  double _chiSq;
 
   std::unique_ptr<FitterFuncs::PulseShapeFunctor> psfPtr_;
   std::unique_ptr<ROOT::Math::Functor> pfunctor_;
 
   bool Minimize();
   bool UpdateCov();
+  bool UpdatePulseShape();
   double CalculateChiSq();
   bool NNLS();
 
+  //holds data samples
   SampleVector _amplitudes;
+  //holds inverse covariance matrix
   SampleMatrix _invCovMat;
 
-  SampleVector _pedWidth;
+  //holds diagonal noise terms
+  SampleVector _noiseTerms;
+  //holds constant pedestal constraint
   double _pedConstraint;
   
-  FullSampleMatrix noiseCor;
+  //holds full covariance matrix for a pulse shape 
+  //varied in time
   FullSampleMatrix pulseCov;
 
+  //holds full pulse shape template
+  FullSampleVector pulseShape;
+
+  //holds matrix of pulse shape templates for each BX
   SamplePulseMatrix _pulseMat;
 
+  //for FNNLS algorithm
   PulseVector _ampVec;
   PulseVector _ampVecMin;
   PulseVector _errVec;
-  FullSampleVector pulseShape;
-  SampleVector zeroShape;
-
   PulseVector ampvecpermtest;
-
-  HcalDetId _detID;
-
-  BXVector _bxs;
-  BXVector _bxsMin;
-  unsigned int _nPulseTot;
-  unsigned int _nP;  
-
-  double _chiSq;
 
   SamplePulseMatrix invcovp;
   PulseMatrix aTaMat; // A-transpose A (matrix)
@@ -84,8 +90,6 @@ class DoMahiAlgo
   SampleMatrix _covDecompLinv;
   PulseMatrix _topleft_work;
   PulseDecompLDLT _pulseDecomp;
-
-  //PulseShapes pulseShapeObj;
 
 }; 
 #endif

@@ -132,12 +132,12 @@ bool DoMahiAlgo::DoFit(SampleVector amplitudes, std::vector<float> &correctedOut
   //need to fix
   if (_nPulseTot==1) {
     //_ampVec.coeffRef(int(_bxs.coeff(0))) = _amplitudes.coeff(HcalConst::soi)*1.4;
-    _ampVec.coeffRef(int(_bxs.coeff(0))) = 0;//_amplitudes.coeff(HcalConst::soi)*1.4;
+    _ampVec.coeffRef(int(_bxs.coeff(0))) = _amplitudes.coeff(HcalConst::soi);//*1.4;
   }
   else {
-    _ampVec.coeffRef(int(_bxs.coeff(0))+1) = 0;//_amplitudes.coeff(HcalConst::soi-1)*1.4;
-    _ampVec.coeffRef(int(_bxs.coeff(1))+1) = 0;//_amplitudes.coeff(HcalConst::soi  )*1.4;
-    _ampVec.coeffRef(int(_bxs.coeff(2))+1) = 0;//_amplitudes.coeff(HcalConst::soi+1)*1.4;
+    _ampVec.coeffRef(int(_bxs.coeff(0))+1) = _amplitudes.coeff(HcalConst::soi-1);//*1.4;
+    _ampVec.coeffRef(int(_bxs.coeff(1))+1) = _amplitudes.coeff(HcalConst::soi  );//*1.4;
+    _ampVec.coeffRef(int(_bxs.coeff(2))+1) = _amplitudes.coeff(HcalConst::soi+1);//*1.4;
   }
 
   _chiSq = 999;

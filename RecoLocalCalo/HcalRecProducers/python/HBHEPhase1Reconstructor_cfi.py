@@ -66,10 +66,10 @@ hbheprereco = cms.EDProducer(
         firstSampleShift = cms.int32(0),
 
         # Use "Method 2"?
-        useM2 = cms.bool(False),
+        useM2 = cms.bool(True),
 
         # Use "Method 3"?
-        useM3 = cms.bool(False),
+        useM3 = cms.bool(True),
 
         # Use "Mahi"?
         useMahi = cms.bool(True)

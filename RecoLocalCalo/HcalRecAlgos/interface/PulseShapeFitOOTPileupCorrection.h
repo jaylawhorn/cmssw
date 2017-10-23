@@ -26,6 +26,7 @@ namespace HcalConst{
    constexpr int nsPerBX = 25;
    constexpr float iniTimeShift = 92.5f;
    constexpr double invertnsPerBx = 0.04;
+   constexpr int soi = 4;
 
 }
 

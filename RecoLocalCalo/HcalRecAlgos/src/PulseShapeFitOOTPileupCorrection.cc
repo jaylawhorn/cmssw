@@ -409,20 +409,20 @@ int PulseShapeFitOOTPileupCorrection::pulseShapeFit(const double * energyArr, co
    //std::cout << ts4Chi2_ << ", " << ts4Max_ << std::endl;
 
    int BX[3] = {4,5,3};
-   if(ts4Chi2_ != 0) fit(1,timevalfit,chargevalfit,pedvalfit,chi2,fitStatus,tsMAX,tsTOTen,tmpy,BX);
-// Based on the pulse shape ( 2. likely gives the same performance )
-   if(tmpy[2] > 3.*tmpy[3]) BX[2] = 2;
-// Only do three-pulse fit when tstrig < ts4Max_, otherwise one-pulse fit is used (above)
-   if(chi2 > ts4Chi2_ && tstrig < ts4Max_)   { //fails chi2 cut goes straight to 3 Pulse fit
-     fit(3,timevalfit,chargevalfit,pedvalfit,chi2,fitStatus,tsMAX,tsTOTen,tmpy,BX);
-     useTriple=true;
-   }
-
+   //if(ts4Chi2_ != 0) fit(1,timevalfit,chargevalfit,pedvalfit,chi2,fitStatus,tsMAX,tsTOTen,tmpy,BX);
+   // Based on the pulse shape ( 2. likely gives the same performance )
+   //if(tmpy[2] > 3.*tmpy[3]) BX[2] = 2;
+   // Only do three-pulse fit when tstrig < ts4Max_, otherwise one-pulse fit is used (above)
+   //if(chi2 > ts4Chi2_ && tstrig < ts4Max_)   { //fails chi2 cut goes straight to 3 Pulse fit
+   fit(3,timevalfit,chargevalfit,pedvalfit,chi2,fitStatus,tsMAX,tsTOTen,tmpy,BX);
+   useTriple=true;
+   // }
+   
    /*
-   if(chi2 > ts345Chi2_)   { //fails do two pulse chi2 for TS5 
+     if(chi2 > ts345Chi2_)   { //fails do two pulse chi2 for TS5 
      BX[1] = 5;
      fit(3,timevalfit,chargevalfit,pedvalfit,chi2,fitStatus,tsMAX,tsTOTen,BX);
-   }
+     }
    */
    //Fix back the timeslew
    //if(applyTimeSlew_) timevalfit+=HcalTimeSlew::delay(std::max(1.0,chargeArr[4]),slewFlavor_);

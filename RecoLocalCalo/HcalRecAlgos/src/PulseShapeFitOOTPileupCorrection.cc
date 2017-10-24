@@ -426,10 +426,10 @@ int PulseShapeFitOOTPileupCorrection::pulseShapeFit(const double * energyArr, co
    timevalfit -= (int(soi)-HcalConst::shiftTS)*HcalConst::nsPerBX;
 
    /*
-   if(chi2 > ts345Chi2_)   { //fails do two pulse chi2 for TS5 
+     if(chi2 > ts345Chi2_)   { //fails do two pulse chi2 for TS5 
      BX[1] = 5;
      fit(3,timevalfit,chargevalfit,pedvalfit,chi2,fitStatus,tsMAX,tsTOTen,BX);
-   }
+     }
    */
    //Fix back the timeslew
    //if(applyTimeSlew_) timevalfit+=HcalTimeSlew::delay(std::max(1.0,chargeArr[4]),slewFlavor_);

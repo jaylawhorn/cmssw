@@ -9,6 +9,7 @@
 #include "DataFormats/HcalRecHit/interface/HBHEChannelInfo.h"
 
 #include "CalibCalorimetry/HcalAlgos/interface/HcalPulseShapes.h"
+#include "CalibCalorimetry/HcalAlgos/interface/HcalTimeSlew.h"
 #include "RecoLocalCalo/HcalRecAlgos/interface/PulseShapeFitOOTPileupCorrection.h"
 
 class DoMahiAlgo
@@ -31,7 +32,9 @@ class DoMahiAlgo
  private:
 
   int doDebug;
-  bool doDynamicPulseCov;
+  bool isHPD;
+  HcalTimeSlew::BiasSetting slewFlavor_;
+
   //for pulse shapes
   int cntsetPulseShape;
 
@@ -50,12 +53,14 @@ class DoMahiAlgo
 
   bool Minimize();
   bool UpdateCov();
-  bool UpdatePulseShape();
+  bool UpdatePulseShape(double itQ, FullSampleVector &pulseShape, FullSampleMatrix &pulseCov);
   double CalculateChiSq();
   bool NNLS();
 
   //holds data samples
   SampleVector _amplitudes;
+  //holds corrections per pulse for TS4->whole pulse charge
+  SampleVector _fullPulseCorrection;
   //holds inverse covariance matrix
   SampleMatrix _invCovMat;
 
@@ -67,9 +72,13 @@ class DoMahiAlgo
   //holds full covariance matrix for a pulse shape 
   //varied in time
   FullSampleMatrix pulseCov;
+  FullSampleMatrix pulseCovOOTM;
+  FullSampleMatrix pulseCovOOTP;
 
   //holds full pulse shape template
   FullSampleVector pulseShape;
+  FullSampleVector pulseShapeOOTM;
+  FullSampleVector pulseShapeOOTP;
 
   //holds matrix of pulse shape templates for each BX
   SamplePulseMatrix _pulseMat;

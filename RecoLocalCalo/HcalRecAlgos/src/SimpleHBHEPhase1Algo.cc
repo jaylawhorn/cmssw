@@ -108,27 +108,27 @@ HBHERecHit SimpleHBHEPhase1Algo::reconstruct(const HBHEChannelInfo& info,
 
     if(mahi) {
       //std::cout << "???" << std::endl;
-      if(info.hasTimeInfo()) {
+      //if(info.hasTimeInfo()) {
 
-        psFitMAHIOOTpuCorr_->setPulseShapeTemplate(theHcalPulseShapes_.getShape(info.recoShape()));
-	mahi->setDebug(-1);
-	mahi->phase1Apply(info,m10E,chi2_mahi);
-	m10E *= hbminusCorrectionFactor(channelId, m10E, isData);
+      psFitMAHIOOTpuCorr_->setPulseShapeTemplate(theHcalPulseShapes_.getShape(info.recoShape()));
+      mahi->setDebug(-1);
+      mahi->phase1Apply(info,m10E,chi2_mahi);
+      m10E *= hbminusCorrectionFactor(channelId, m10E, isData);
 	
-      } else {
+      //} else {
 
 	/// if HPD do the Method2
-	if(method2) {
-	  psFitOOTpuCorr_->setPulseShapeTemplate(theHcalPulseShapes_.getShape(info.recoShape()),
-						 !info.hasTimeInfo());
-	  // "phase1Apply" call below sets m2E, m2t, useTriple, and chi2.
-	  // These parameters are pased by non-const reference.
-	  method2->phase1Apply(info, m10E, m10T, useTriple_mahi, chi2_mahi);
-	  m2E *= hbminusCorrectionFactor(channelId, m2E, isData);
-	}
-      }
+	//if(method2) {
+	//  psFitOOTpuCorr_->setPulseShapeTemplate(theHcalPulseShapes_.getShape(info.recoShape()),
+	//					 !info.hasTimeInfo());
+	//  // "phase1Apply" call below sets m2E, m2t, useTriple, and chi2.
+	//  // These parameters are pased by non-const reference.
+	//  method2->phase1Apply(info, m10E, m10T, useTriple_mahi, chi2_mahi);
+	//  m2E *= hbminusCorrectionFactor(channelId, m2E, isData);
+	//}
+      //}
     }
-
+    
     //Yeah, such a hack
     float tdcTime = info.soiRiseTime();
     if (!HcalSpecialTimes::isSpecial(tdcTime))

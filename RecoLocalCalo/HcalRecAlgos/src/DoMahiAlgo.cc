@@ -23,10 +23,10 @@ void DoMahiAlgo::phase1Apply(const HBHEChannelInfo& channelData,
   if (channelData.hasTimeInfo()) isHPD=false;
   else isHPD=true;
 
-  if (isHPD) {
-    slewFlavor_=HcalTimeSlew::Medium;
-  }
-
+  //if (isHPD) {
+  slewFlavor_=HcalTimeSlew::Medium;
+  //}
+  
   //Dark current value for this channel (SiPM only)
   double darkCurrent =  psfPtr_->getSiPMDarkCurrent(channelData.darkCurrent(), 
 						    channelData.fcByPE(),
@@ -146,18 +146,21 @@ bool DoMahiAlgo::DoFit(SampleVector amplitudes, std::vector<float> &correctedOut
     _ampVec.coeffRef(int(_bxs.coeff(1))+1) = _amplitudes.coeff(HcalConst::soi  )*ampCorrection;
     _pulseMat.col(_bxs.coeff(1)+1) = pulseShape.segment<HcalConst::maxSamples>(1);    
 
-    _ampVec.coeffRef(int(_bxs.coeff(0))+1) = 0;//_amplitudes.coeff(HcalConst::soi-1);
     pulseShapeOOTM=FullSampleVector::Zero(12);
     pulseCovOOTM=FullSampleMatrix::Constant(0);
-    status = UpdatePulseShape(_amplitudes.coeff(HcalConst::soi-1), pulseShapeOOTM, pulseCovOOTM);
+    status = UpdatePulseShape(double(_amplitudes.coeff(HcalConst::soi-1)), pulseShapeOOTM, pulseCovOOTM);
 
     _pulseMat.col(_bxs.coeff(0)+1) = pulseShapeOOTM.segment<HcalConst::maxSamples>(2);
 
-    _ampVec.coeffRef(int(_bxs.coeff(2))+1) = 0;//_amplitudes.coeff(HcalConst::soi+1);
+    ampCorrection = 1.0/double(pulseShapeOOTM.coeff(HcalConst::soi+1));
+    _ampVec.coeffRef(int(_bxs.coeff(0))+1) = 0;//_amplitudes.coeff(HcalConst::soi-1)*ampCorrection;
+
     pulseShapeOOTP=FullSampleVector::Zero(12);
     pulseCovOOTP=FullSampleMatrix::Constant(0);
     status = UpdatePulseShape(double(_amplitudes.coeff(HcalConst::soi+1)), pulseShapeOOTP, pulseCovOOTP);
 
+    ampCorrection = 1.0/double(pulseShapeOOTP.coeff(HcalConst::soi+1));
+    _ampVec.coeffRef(int(_bxs.coeff(2))+1) = 0;//_amplitudes.coeff(HcalConst::soi+1)*ampCorrection;
     _pulseMat.col(_bxs.coeff(2)+1) = pulseShapeOOTP.segment<HcalConst::maxSamples>(0);
 
   }
@@ -250,9 +253,9 @@ bool DoMahiAlgo::UpdatePulseShape(double itQ, FullSampleVector &pulseShape, Full
   if (isHPD) dt=5.0;
 
   float t0=0.0;
-  if (isHPD) {
-    t0=HcalTimeSlew::delay(std::max(1.0, itQ), slewFlavor_);
-  }
+  //if (isHPD) {
+  t0=HcalTimeSlew::delay(std::max(1.0, itQ), slewFlavor_);
+  //}
 
   const double xx[4]={t0, 1.0, 0.0, 3};
   (*pfunctor_)(&xx[0]);
@@ -263,10 +266,14 @@ bool DoMahiAlgo::UpdatePulseShape(double itQ, FullSampleVector &pulseShape, Full
 
   FullSampleVector pulseShapeM = FullSampleVector::Zero(12);
   FullSampleVector pulseShapeP = FullSampleVector::Zero(12);
-  
+
   const double xxm[4]={-dt+t0, 1.0, 0.0, 3};
   const double xxp[4]={ dt+t0, 1.0, 0.0, 3};
-  
+
+  if (doDebug==1) {
+    std::cout << itQ << ", " << t0 << ", " << -dt+t0 << ", " << dt+t0 << std::endl;
+  }
+
   (*pfunctor_)(&xxm[0]);
   for (int i=-1; i<11; i++) {
     pulseShapeM.coeffRef(i+1) = psfPtr_->getPulseShape(i);

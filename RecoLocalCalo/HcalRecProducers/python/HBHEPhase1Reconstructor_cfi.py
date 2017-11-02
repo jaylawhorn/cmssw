@@ -36,7 +36,7 @@ hbheprereco = cms.EDProducer(
     makeRecHits = cms.bool(True),
 
     # Flag indicating whether we should produce HBHEChannelInfoCollection
-    saveInfos = cms.bool(False),
+    saveInfos = cms.bool(True),
 
     # Flag indicating whether we should include HBHEChannelInfo objects
     # into HBHEChannelInfoCollection despite the fact that the channels
@@ -69,7 +69,11 @@ hbheprereco = cms.EDProducer(
         useM2 = cms.bool(True),
 
         # Use "Method 3"?
-        useM3 = cms.bool(True)
+        useM3 = cms.bool(True),
+
+        # Use "Mahi"?
+        useMahi = cms.bool(True)
+
     ),
 
     # Reconstruction algorithm configuration data to fetch from DB, if any

@@ -379,7 +379,10 @@ int PulseShapeFitOOTPileupCorrection::pulseShapeFit(const double * energyArr, co
       tmpy[i]=energyArr[i]-pedenArr[i];
       //Add Time Slew !!! does this need to be pedestal subtracted
       tmpslew[i] = 0;
-      if(applyTimeSlew_) tmpslew[i] = HcalTimeSlew::delay(std::max(1.0,chargeArr[i]),slewFlavor_); 
+      if(applyTimeSlew_) {
+	tmpslew[i] = HcalTimeSlew::delay(std::max(1.0,chargeArr[i]),slewFlavor_); 
+	//std::cout << "apply time slew: " << tmpslew[i] << std::endl;
+      }
       // add the noise components
       tmperry2[i]=noiseArrSq[i];
 
@@ -405,22 +408,24 @@ int PulseShapeFitOOTPileupCorrection::pulseShapeFit(const double * energyArr, co
    float chi2        = 999; //cannot be zero
    bool  fitStatus   = false;
    bool useTriple = false;
+   //std::cout << "method 2:";
+   //std::cout << ts4Chi2_ << ", " << ts4Max_ << std::endl;
 
    int BX[3] = {4,5,3};
-   if(ts4Chi2_ != 0) fit(1,timevalfit,chargevalfit,pedvalfit,chi2,fitStatus,tsMAX,tsTOTen,tmpy,BX);
-// Based on the pulse shape ( 2. likely gives the same performance )
-   if(tmpy[2] > 3.*tmpy[3]) BX[2] = 2;
-// Only do three-pulse fit when tstrig < ts4Max_, otherwise one-pulse fit is used (above)
-   if(chi2 > ts4Chi2_ && tstrig < ts4Max_)   { //fails chi2 cut goes straight to 3 Pulse fit
-     fit(3,timevalfit,chargevalfit,pedvalfit,chi2,fitStatus,tsMAX,tsTOTen,tmpy,BX);
-     useTriple=true;
-   }
-
+   //if(ts4Chi2_ != 0) fit(1,timevalfit,chargevalfit,pedvalfit,chi2,fitStatus,tsMAX,tsTOTen,tmpy,BX);
+   // Based on the pulse shape ( 2. likely gives the same performance )
+   //if(tmpy[2] > 3.*tmpy[3]) BX[2] = 2;
+   // Only do three-pulse fit when tstrig < ts4Max_, otherwise one-pulse fit is used (above)
+   //if(chi2 > ts4Chi2_ && tstrig < ts4Max_)   { //fails chi2 cut goes straight to 3 Pulse fit
+   fit(3,timevalfit,chargevalfit,pedvalfit,chi2,fitStatus,tsMAX,tsTOTen,tmpy,BX);
+   useTriple=true;
+   // }
+   
    /*
-   if(chi2 > ts345Chi2_)   { //fails do two pulse chi2 for TS5 
+     if(chi2 > ts345Chi2_)   { //fails do two pulse chi2 for TS5 
      BX[1] = 5;
      fit(3,timevalfit,chargevalfit,pedvalfit,chi2,fitStatus,tsMAX,tsTOTen,BX);
-   }
+     }
    */
    //Fix back the timeslew
    //if(applyTimeSlew_) timevalfit+=HcalTimeSlew::delay(std::max(1.0,chargeArr[4]),slewFlavor_);
@@ -532,6 +537,8 @@ void PulseShapeFitOOTPileupCorrection::phase1Apply(const HBHEChannelInfo& channe
   double tsTOTen = 0; // in GeV
   double sipmDarkCurrentWidth = psfPtr_->getSiPMDarkCurrent(channelData.darkCurrent(),channelData.fcByPE(),channelData.lambda());
 
+  //std::cout << "dark current from Method 2: " << sipmDarkCurrentWidth << ", " << channelData.darkCurrent() << ", " << channelData.fcByPE() << ", " << channelData.lambda() << std::endl;
+
   // go over the time slices
   for(unsigned int ip=0; ip<cssize; ++ip){
     if( ip >= (unsigned) HcalConst::maxSamples ) continue; // Too many samples than what we wanna fit (10 is enough...) -> skip them
@@ -567,6 +574,10 @@ void PulseShapeFitOOTPileupCorrection::phase1Apply(const HBHEChannelInfo& channe
 
     // sum all in quadrature
     noiseArrSq[ip]= noiseADCArr[ip]*noiseADCArr[ip] + noiseDCArr[ip]*noiseDCArr[ip] + channelData.tsPedestalWidth(ip)*channelData.tsPedestalWidth(ip) +  noisePHArr[ip]*noisePHArr[ip];
+
+    //std::cout << "Method 2 " << ip << ", " << charge - ped << ": " << noiseArrSq[ip] << ", ";
+    //std::cout << noiseADCArr[ip]*noiseADCArr[ip] << ", " << noiseDCArr[ip]*noiseDCArr[ip] << ", ";
+    //std::cout << channelData.tsPedestalWidth(ip)*channelData.tsPedestalWidth(ip) << ", " << noisePHArr[ip]*noisePHArr[ip] << std::endl;
 
     tsTOT += charge - ped;
     tsTOTen += energy - peden;

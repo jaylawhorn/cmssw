@@ -22,7 +22,8 @@ SimpleHBHEPhase1Algo::SimpleHBHEPhase1Algo(
     const float timeShift,
     const bool correctForPhaseContainment,
     std::unique_ptr<PulseShapeFitOOTPileupCorrection> m2,
-    std::unique_ptr<HcalDeterministicFit> detFit)
+    std::unique_ptr<HcalDeterministicFit> detFit,
+    std::unique_ptr<DoMahiAlgo> mahi)
     : pulseCorr_(PulseContainmentFractionalError),
       firstSampleShift_(firstSampleShift),
       samplesToAdd_(samplesToAdd),
@@ -31,7 +32,8 @@ SimpleHBHEPhase1Algo::SimpleHBHEPhase1Algo(
       runnum_(0),
       corrFPC_(correctForPhaseContainment),
       psFitOOTpuCorr_(std::move(m2)),
-      hltOOTpuCorr_(std::move(detFit))
+      hltOOTpuCorr_(std::move(detFit)),
+      psFitMAHIOOTpuCorr_(std::move(mahi))
 {
 }
 
@@ -56,9 +58,10 @@ HBHERecHit SimpleHBHEPhase1Algo::reconstruct(const HBHEChannelInfo& info,
     HBHERecHit rh;
 
     const HcalDetId channelId(info.id());
-
+    //if (channelId.iphi()>60 && channelId.ieta()>16) std::cout << channelId << std::endl;
     // Calculate "Method 0" quantities
-    float m0t = 0.f, m0E = 0.f;
+    //float m0t = 0.f, 
+    float m0E = 0.f;
     {
         int ibeg = static_cast<int>(info.soi()) + firstSampleShift_;
         if (ibeg < 0)
@@ -69,7 +72,7 @@ HBHERecHit SimpleHBHEPhase1Algo::reconstruct(const HBHEChannelInfo& info,
         const float phasens = params ? params->correctionPhaseNS() : phaseNS_;
         m0E = m0Energy(info, fc_ampl, applyContainment, phasens, nSamplesToAdd);
         m0E *= hbminusCorrectionFactor(channelId, m0E, isData);
-        m0t = m0Time(info, fc_ampl, calibs, nSamplesToAdd);
+        //m0t = m0Time(info, fc_ampl, calibs, nSamplesToAdd);
     }
 
     // Run "Method 2"
@@ -96,25 +99,50 @@ HBHERecHit SimpleHBHEPhase1Algo::reconstruct(const HBHEChannelInfo& info,
         m3E *= hbminusCorrectionFactor(channelId, m3E, isData);
     }
 
-    // Finally, construct the rechit
-    float rhE = m0E;
-    float rht = m0t;
-    if (method2)
-    {
-        rhE = m2E;
-        rht = m2t;
+
+    // Run "Mahi"
+    float m10E = 0.f, chi2_mahi = -1.f;
+    float m10T = 0.f;
+    bool useTriple_mahi = false;
+    DoMahiAlgo* mahi = psFitMAHIOOTpuCorr_.get();
+
+    if(mahi) {
+      //std::cout << "???" << std::endl;
+      //if(info.hasTimeInfo()) {
+
+      psFitMAHIOOTpuCorr_->setPulseShapeTemplate(theHcalPulseShapes_.getShape(info.recoShape()));
+      mahi->setDebug(-1);
+      mahi->phase1Apply(info,m10E,chi2_mahi);
+      m10E *= hbminusCorrectionFactor(channelId, m10E, isData);
+	
+      //} else {
+
+	/// if HPD do the Method2
+	//if(method2) {
+	//  psFitOOTpuCorr_->setPulseShapeTemplate(theHcalPulseShapes_.getShape(info.recoShape()),
+	//					 !info.hasTimeInfo());
+	//  // "phase1Apply" call below sets m2E, m2t, useTriple, and chi2.
+	//  // These parameters are pased by non-const reference.
+	//  method2->phase1Apply(info, m10E, m10T, useTriple_mahi, chi2_mahi);
+	//  m2E *= hbminusCorrectionFactor(channelId, m2E, isData);
+	//}
+      //}
     }
-    else if (method3)
-    {
-        rhE = m3E;
-        rht = m3t;
+
+    if (m10E>120 && m2E>0.1 && m2E<100) {
+      std::cout << "wtf" << std::endl;
+      std::cout << m0E << ", " << m2E << ", " << m3E << ", " << m10E << " /// " << chi2 << ", " << chi2_mahi << std::endl;
+      for (int ii=0; ii<10; ii++) std::cout << info.tsRawCharge(ii) << ", ";
+      std::cout << std::endl;
     }
+    
+    //Yeah, such a hack
     float tdcTime = info.soiRiseTime();
     if (!HcalSpecialTimes::isSpecial(tdcTime))
         tdcTime += timeShift_;
-    rh = HBHERecHit(channelId, rhE, rht, tdcTime);
-    rh.setRawEnergy(m0E);
-    rh.setAuxEnergy(m3E);
+    rh = HBHERecHit(channelId, m10E, chi2_mahi, tdcTime);
+    rh.setRawEnergy(m3E);
+    rh.setAuxEnergy(m2E);
     rh.setChiSquared(chi2);
 
     // Set rechit aux words

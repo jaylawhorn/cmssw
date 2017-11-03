@@ -21,6 +21,10 @@ class DoMahiAlgo
   void phase1Apply(const HBHEChannelInfo& channelData, float& reconstructedEnergy, float& chi2);  
   bool DoFit(SampleVector amplitudes, std::vector<float> &correctedOutput, int nbx);
 
+  void setParameters(bool iDoPrefit, bool iFloatPedestal, bool iApplyTimeSlew, HcalTimeSlew::BiasSetting slewFlavor,
+                     double iMeanTime, double iTimeSigmaHPD, double iTimeSigmaSiPM,
+                     const std::vector <int> &iActiveBXs, int iNMaxIters);
+
   void setPulseShapeTemplate  (const HcalPulseShapes::Shape& ps);
   void resetPulseShapeTemplate(const HcalPulseShapes::Shape& ps);
 
@@ -34,6 +38,24 @@ class DoMahiAlgo
   int doDebug;
   bool isHPD;
   HcalTimeSlew::BiasSetting slewFlavor_;
+
+  //configurables                                                                                                                            
+  //int doDebug;
+
+  //int isHPD;
+
+  bool doPrefit_;
+  bool floatPedestal_;
+  bool applyTimeSlew_;
+
+  double meanTime_;
+  double timeSigmaHPD_;
+  double timeSigmaSiPM_;
+  std::vector <int> activeBXs_;                                                                                                            
+  int nMaxIters_;
+  int nMaxItersNNLS_;
+
+  float dt_;
 
   //for pulse shapes
   int cntsetPulseShape;

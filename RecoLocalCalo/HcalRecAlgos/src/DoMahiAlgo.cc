@@ -7,9 +7,28 @@ void eigen_solve_submatrix(PulseMatrix& mat, PulseVector& invec, PulseVector& ou
 DoMahiAlgo::DoMahiAlgo() { 
 }
 
+void DoMahiAlgo::setParameters(bool iDoPrefit, bool iFloatPedestal, bool iApplyTimeSlew, HcalTimeSlew::BiasSetting slewFlavor,
+                               double iMeanTime, double iTimeSigmaHPD, double iTimeSigmaSiPM,
+                               const std::vector <int> &iActiveBXs, int iNMaxIters) {
+
+  doPrefit_      = iDoPrefit;
+  floatPedestal_ = iFloatPedestal;
+  applyTimeSlew_ = iApplyTimeSlew;
+  slewFlavor_    = slewFlavor;
+
+  meanTime_      = iMeanTime;
+  timeSigmaHPD_  = iTimeSigmaHPD;
+  timeSigmaSiPM_ = iTimeSigmaSiPM;
+  activeBXs_     = iActiveBXs;                                                                                                             
+  nMaxIters_     = iNMaxIters;
+  nMaxItersNNLS_ = iNMaxIters;
+
+}
+
 void DoMahiAlgo::setDebug(int val) {
   doDebug=val;
   if (doDebug== 1) std::cout << "print debugging info" << std::endl;
+
 
 }
 
@@ -20,11 +39,17 @@ void DoMahiAlgo::phase1Apply(const HBHEChannelInfo& channelData,
   const unsigned cssize = channelData.nSamples();
   _detID = channelData.id();
   
-  if (channelData.hasTimeInfo()) isHPD=false;
-  else isHPD=true;
+  if (channelData.hasTimeInfo()) {
+    isHPD=false;
+    dt_ = timeSigmaSiPM_;
+  }
+  else {
+    isHPD=true;
+    dt_ = timeSigmaHPD_;
+  }
 
   //if (isHPD) {
-  slewFlavor_=HcalTimeSlew::Medium;
+  //slewFlavor_=HcalTimeSlew::Medium;
   //}
   
   //Dark current value for this channel (SiPM only)
@@ -249,10 +274,10 @@ bool DoMahiAlgo::UpdatePulseShape(double itQ, FullSampleVector &pulseShape, Full
   //pulseCov = FullSampleMatrix::Constant(0);
   //pulseShape = PulseVector::Zero(12);
 
-  float dt=2.5;
-  if (isHPD) dt=5.0;
+  //float dt=2.5;
+  //if (isHPD) dt=5.0;
 
-  float t0=0.0;
+  float t0=meanTime_;
   //if (isHPD) {
   t0=HcalTimeSlew::delay(std::max(1.0, itQ), slewFlavor_);
   //}
@@ -267,11 +292,11 @@ bool DoMahiAlgo::UpdatePulseShape(double itQ, FullSampleVector &pulseShape, Full
   FullSampleVector pulseShapeM = FullSampleVector::Zero(12);
   FullSampleVector pulseShapeP = FullSampleVector::Zero(12);
 
-  const double xxm[4]={-dt+t0, 1.0, 0.0, 3};
-  const double xxp[4]={ dt+t0, 1.0, 0.0, 3};
+  const double xxm[4]={-dt_+t0, 1.0, 0.0, 3};
+  const double xxp[4]={ dt_+t0, 1.0, 0.0, 3};
 
   if (doDebug==1) {
-    std::cout << itQ << ", " << t0 << ", " << -dt+t0 << ", " << dt+t0 << std::endl;
+    std::cout << itQ << ", " << t0 << ", " << -dt_+t0 << ", " << dt_+t0 << std::endl;
   }
 
   (*pfunctor_)(&xxm[0]);

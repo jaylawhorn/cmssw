@@ -2,6 +2,7 @@ import FWCore.ParameterSet.Config as cms
 import RecoLocalCalo.HcalRecProducers.HBHEMethod3Parameters_cfi as method3
 import RecoLocalCalo.HcalRecProducers.HBHEMethod2Parameters_cfi as method2
 import RecoLocalCalo.HcalRecProducers.HBHEMethod0Parameters_cfi as method0
+import RecoLocalCalo.HcalRecProducers.HBHEMahiParameters_cfi as mahi
 import RecoLocalCalo.HcalRecProducers.HBHEPulseShapeFlagSetter_cfi as pulseShapeFlag
 import RecoLocalCalo.HcalRecProducers.HBHEStatusBitSetter_cfi as hbheStatusFlag
 
@@ -56,6 +57,7 @@ hbheprereco = cms.EDProducer(
         method3.m3Parameters,
         method2.m2Parameters,
         method0.m0Parameters,
+        mahi.mahiParameters,
 
         Class = cms.string("SimpleHBHEPhase1Algo"),
 

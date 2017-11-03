@@ -277,6 +277,9 @@ HcalHitReconstructor::HcalHitReconstructor(edm::ParameterSet const& conf):
                           conf.getParameter<int>   ("fitTimes")
 			  );
   }
+  //else if (puCorrMethod_ == 10) {
+  //
+  //}
   reco_.setMeth3Params(
 	    conf.getParameter<bool>    ("applyTimeSlewM3"),
             conf.getParameter<double>  ("pedestalUpperLimit"),
@@ -284,6 +287,7 @@ HcalHitReconstructor::HcalHitReconstructor(edm::ParameterSet const& conf):
             conf.getParameter<std::vector<double> >("timeSlewPars"),
             conf.getParameter<double>  ("respCorrM3")
             );
+
 }
 
 

@@ -111,7 +111,7 @@ HBHERecHit SimpleHBHEPhase1Algo::reconstruct(const HBHEChannelInfo& info,
       //if(info.hasTimeInfo()) {
 
       psFitMAHIOOTpuCorr_->setPulseShapeTemplate(theHcalPulseShapes_.getShape(info.recoShape()));
-      mahi->setDebug(-1);
+      mahi->setDebug(-11);
       mahi->phase1Apply(info,m10E,chi2_mahi);
       m10E *= hbminusCorrectionFactor(channelId, m10E, isData);
 	
@@ -129,8 +129,7 @@ HBHERecHit SimpleHBHEPhase1Algo::reconstruct(const HBHEChannelInfo& info,
       //}
     }
 
-    if (m10E>120 && m2E>0.1 && m2E<100) {
-      std::cout << "wtf" << std::endl;
+    if (m0E>10) {
       std::cout << m0E << ", " << m2E << ", " << m3E << ", " << m10E << " /// " << chi2 << ", " << chi2_mahi << std::endl;
       for (int ii=0; ii<10; ii++) std::cout << info.tsRawCharge(ii) << ", ";
       std::cout << std::endl;

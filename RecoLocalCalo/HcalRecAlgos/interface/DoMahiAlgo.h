@@ -10,7 +10,9 @@
 
 #include "CalibCalorimetry/HcalAlgos/interface/HcalPulseShapes.h"
 #include "CalibCalorimetry/HcalAlgos/interface/HcalTimeSlew.h"
-#include "RecoLocalCalo/HcalRecAlgos/interface/PulseShapeFitOOTPileupCorrection.h"
+#include "RecoLocalCalo/HcalRecAlgos/interface/PulseShapeFunctor.h"
+
+#include <unordered_map>
 
 class DoMahiAlgo
 {
@@ -19,7 +21,11 @@ class DoMahiAlgo
   ~DoMahiAlgo() { };
 
   void phase1Apply(const HBHEChannelInfo& channelData, float& reconstructedEnergy, float& chi2);  
-  bool DoFit(SampleVector amplitudes, std::vector<float> &correctedOutput, int nbx);
+  bool DoFit(SampleVector amplitudes, std::vector<float> &correctedOutput);
+
+  void setParameters(bool iDoPrefit, bool iFloatPedestal, bool iApplyTimeSlew, HcalTimeSlew::BiasSetting slewFlavor,
+		     double iMeanTime, double iTimeSigmaHPD, double iTimeSigmaSiPM, 
+		     const std::vector <int> &iActiveBXs, int iNMaxIters);
 
   void setPulseShapeTemplate  (const HcalPulseShapes::Shape& ps);
   void resetPulseShapeTemplate(const HcalPulseShapes::Shape& ps);
@@ -31,9 +37,24 @@ class DoMahiAlgo
 
  private:
 
+  //configurables
   int doDebug;
-  bool isHPD;
+
+  int isHPD;
+
+  bool doPrefit_;
+  bool floatPedestal_;
+  bool applyTimeSlew_;
   HcalTimeSlew::BiasSetting slewFlavor_;
+
+  double meanTime_;
+  double timeSigmaHPD_;
+  double timeSigmaSiPM_;
+  //std::vector <int> activeBXs_;
+  int nMaxIters_;
+  int nMaxItersNNLS_;
+
+  float dt_;
 
   //for pulse shapes
   int cntsetPulseShape;
@@ -53,7 +74,7 @@ class DoMahiAlgo
 
   bool Minimize();
   bool UpdateCov();
-  bool UpdatePulseShape(double itQ, FullSampleVector &pulseShape, FullSampleMatrix &pulseCov);
+  bool CalculatePulseShapes();
   double CalculateChiSq();
   bool NNLS();
 
@@ -68,17 +89,15 @@ class DoMahiAlgo
   SampleVector _noiseTerms;
   //holds constant pedestal constraint
   double _pedConstraint;
+
+  std::unordered_map<int, int> mapBXs;
   
   //holds full covariance matrix for a pulse shape 
   //varied in time
-  FullSampleMatrix pulseCov;
-  FullSampleMatrix pulseCovOOTM;
-  FullSampleMatrix pulseCovOOTP;
+  std::vector<FullSampleMatrix> pulseCovArray;
 
   //holds full pulse shape template
-  FullSampleVector pulseShape;
-  FullSampleVector pulseShapeOOTM;
-  FullSampleVector pulseShapeOOTP;
+  std::vector<FullSampleVector> pulseShapeArray;
 
   //holds matrix of pulse shape templates for each BX
   SamplePulseMatrix _pulseMat;

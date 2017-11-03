@@ -13,7 +13,21 @@
 static std::unique_ptr<DoMahiAlgo>
 parseHBHEMahiDescription(const edm::ParameterSet& conf)
 {
+
+  const bool iDoPrefit        = conf.getParameter<bool> ("doPrefit");
+  const bool iFloatPedestal   = conf.getParameter<bool> ("floatPedestal");
+  const bool iApplyTimeSlew   = conf.getParameter<bool> ("applyTimeSlew");
+  const double iMeanTime      = conf.getParameter<double> ("meanTime");
+  const double iTimeSigmaHPD  = conf.getParameter<double> ("timeSigmaHPD");
+  const double iTimeSigmaSiPM = conf.getParameter<double> ("timeSigmaSiPM");
+  const std::vector<int> iActiveBXs     = conf.getParameter<std::vector<int>> ("activeBXs");
+  const int iNMaxIters        = conf.getParameter<int> ("nMaxIters");
+
   std::unique_ptr<DoMahiAlgo> corr = std::make_unique<DoMahiAlgo>();
+
+  corr->setParameters(iDoPrefit, iFloatPedestal, iApplyTimeSlew, HcalTimeSlew::Medium,
+		      iMeanTime, iTimeSigmaHPD, iTimeSigmaSiPM,
+		      iActiveBXs, iNMaxIters);
   return corr;
 }
 
@@ -81,7 +95,6 @@ parseHBHEMethod3Description(const edm::ParameterSet& conf)
 	       pedSubFxn, iTimeSlewPars, irespCorrM3);
     return fit;
 }
-
 
 std::unique_ptr<AbsHBHEPhase1Algo>
 parseHBHEPhase1AlgoDescription(const edm::ParameterSet& ps)

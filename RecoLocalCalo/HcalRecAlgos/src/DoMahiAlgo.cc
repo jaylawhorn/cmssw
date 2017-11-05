@@ -7,6 +7,50 @@ void eigen_solve_submatrix(PulseMatrix& mat, PulseVector& invec, PulseVector& ou
 DoMahiAlgo::DoMahiAlgo() { 
 }
 
+void DoMahiAlgo::setParameters(bool iDoPrefit, bool iFloatPedestal, bool iApplyTimeSlew, HcalTimeSlew::BiasSetting slewFlavor,
+			       double iMeanTime, double iTimeSigmaHPD, double iTimeSigmaSiPM,
+			       const std::vector <int> &iActiveBXs, int iNMaxIters) {
+
+  doPrefit_      = iDoPrefit;
+  floatPedestal_ = iFloatPedestal;
+  applyTimeSlew_ = iApplyTimeSlew;
+  slewFlavor_    = slewFlavor;
+
+  meanTime_      = iMeanTime;
+  timeSigmaHPD_  = iTimeSigmaHPD;
+  timeSigmaSiPM_ = iTimeSigmaSiPM;
+  activeBXs_     = iActiveBXs;
+  nMaxIters_     = iNMaxIters;
+  nMaxItersNNLS_ = iNMaxIters;
+
+  //ECAL does it better -- to be fixed
+  // https://github.com/cms-sw/cmssw/blob/CMSSW_8_1_X/RecoLocalCalo/EcalRecProducers/plugins/EcalUncalibRecHitWorkerMultiFit.cc#L151-L171
+
+  //if (floatPedestal_) 
+  //  _bxs.resize(iActiveBXs.size()+1);
+  //else 
+  //_bxs.resize(iActiveBXs.size());
+  //
+  //std::cout << iActiveBXs.size()+1 << std::endl;
+  //
+  //for (uint ibx=0; ibx<iActiveBXs.size(); ibx++) {
+  //_bxs.coeffRef(ibx) = iActiveBXs[ibx];
+    //std::cout << iActiveBXs[ibx] << ", ";
+  //}
+  //std::cout << std::endl;
+
+  //BXVector _bxs2;
+  //_bxs2.resize(iActiveBXs.size());
+  //_bxs2 << -1, 0, 1;
+  //
+  //std::cout << "bxs : " << _bxs << std::endl;
+  //std::cout << "bxs2: " << _bxs2 << std::endl;
+
+  //if (floatPedestal_) 
+  //_bxs.coeffRef(iActiveBXs.size()) = 10; // for pedestal val
+
+}
+
 void DoMahiAlgo::setDebug(int val) {
   doDebug=val;
   if (doDebug== 1) std::cout << "print debugging info" << std::endl;
@@ -85,7 +129,7 @@ void DoMahiAlgo::phase1Apply(const HBHEChannelInfo& channelData,
   if(tstrig >= 0) {
     if (doDebug==1) std::cout << "three pulse fit " << std::endl;
     
-    status = DoFit(charges,reconstructedVals,3); 
+    status = DoFit(charges,reconstructedVals); 
     
   }
   
@@ -101,21 +145,11 @@ void DoMahiAlgo::phase1Apply(const HBHEChannelInfo& channelData,
 
 }
 
-bool DoMahiAlgo::DoFit(SampleVector amplitudes, std::vector<float> &correctedOutput, int nbx) {
+bool DoMahiAlgo::DoFit(SampleVector amplitudes, std::vector<float> &correctedOutput) {
   if (doDebug==1) std::cout << "DoFit" << std::endl;
 
-  _nP = 0;
-  //ECAL does it better -- to be fixed
-  // https://github.com/cms-sw/cmssw/blob/CMSSW_8_1_X/RecoLocalCalo/EcalRecProducers/plugins/EcalUncalibRecHitWorkerMultiFit.cc#L151-L171
-  
-  if (nbx==3) {
-    _bxs.resize(3);
-    _bxs << -1,0,1;
-  }
-  else {
-    _bxs.resize(1);
-    _bxs << 0;
-  }
+  _bxs.resize(3);
+  _bxs << -1, 0, 1;
 
   _nPulseTot = _bxs.rows();  
 
@@ -127,6 +161,8 @@ bool DoMahiAlgo::DoFit(SampleVector amplitudes, std::vector<float> &correctedOut
 
   bool status = true;
 
+  //std::cout << _nPulseTot << ", " << std::endl;
+
   //need to fix
   if (_nPulseTot==1) {
     pulseShape=FullSampleVector::Zero(12);
@@ -134,7 +170,7 @@ bool DoMahiAlgo::DoFit(SampleVector amplitudes, std::vector<float> &correctedOut
     status = UpdatePulseShape(_amplitudes.coeff(HcalConst::soi), pulseShape, pulseCov);
     
     double ampCorrection = 1.0/double(pulseShape.coeff(HcalConst::soi+1));
-    _ampVec.coeffRef(int(_bxs.coeff(0))) = _amplitudes.coeff(HcalConst::soi)*ampCorrection;//*1.4;
+    _ampVec.coeffRef(int(_bxs.coeff(0))) = _amplitudes.coeff(HcalConst::soi)*ampCorrection;
     _pulseMat.col(int(_bxs.coeff(0))) = pulseShape.segment<HcalConst::maxSamples>(1);
   }
   else {
@@ -142,26 +178,33 @@ bool DoMahiAlgo::DoFit(SampleVector amplitudes, std::vector<float> &correctedOut
     pulseCov=FullSampleMatrix::Constant(0);
     status = UpdatePulseShape(_amplitudes.coeff(HcalConst::soi), pulseShape, pulseCov);
 
+    //std::cout << "------ " << int(_bxs.coeff(1)) << std::endl;
     double ampCorrection = 1.0/double(pulseShape.coeff(HcalConst::soi+1));
+    //std::cout << "eep" << std::endl;
     _ampVec.coeffRef(int(_bxs.coeff(1))+1) = _amplitudes.coeff(HcalConst::soi  )*ampCorrection;
-    _pulseMat.col(_bxs.coeff(1)+1) = pulseShape.segment<HcalConst::maxSamples>(1);    
+    //std::cout << "eep" << std::endl;
+    _pulseMat.col(_bxs.coeff(1)+1) = pulseShape.segment<HcalConst::maxSamples>(1);
+    //std::cout << "eep" << std::endl;
+    //std::cout << int(_bxs.coeff(1)) << ": " << pulseShape.segment<HcalConst::maxSamples>(1).transpose() << std::endl;
 
     pulseShapeOOTM=FullSampleVector::Zero(12);
     pulseCovOOTM=FullSampleMatrix::Constant(0);
     status = UpdatePulseShape(double(_amplitudes.coeff(HcalConst::soi-1)), pulseShapeOOTM, pulseCovOOTM);
 
     _pulseMat.col(_bxs.coeff(0)+1) = pulseShapeOOTM.segment<HcalConst::maxSamples>(2);
+    //std::cout << int(_bxs.coeff(0)) << ": " << pulseShapeOOTM.segment<HcalConst::maxSamples>(2).transpose() << std::endl;
 
     ampCorrection = 1.0/double(pulseShapeOOTM.coeff(HcalConst::soi+1));
-    _ampVec.coeffRef(int(_bxs.coeff(0))+1) = 0;//_amplitudes.coeff(HcalConst::soi-1)*ampCorrection;
+    _ampVec.coeffRef(int(_bxs.coeff(0))+1) = 0;
 
     pulseShapeOOTP=FullSampleVector::Zero(12);
     pulseCovOOTP=FullSampleMatrix::Constant(0);
     status = UpdatePulseShape(double(_amplitudes.coeff(HcalConst::soi+1)), pulseShapeOOTP, pulseCovOOTP);
 
     ampCorrection = 1.0/double(pulseShapeOOTP.coeff(HcalConst::soi+1));
-    _ampVec.coeffRef(int(_bxs.coeff(2))+1) = 0;//_amplitudes.coeff(HcalConst::soi+1)*ampCorrection;
+    _ampVec.coeffRef(int(_bxs.coeff(2))+1) = 0;
     _pulseMat.col(_bxs.coeff(2)+1) = pulseShapeOOTP.segment<HcalConst::maxSamples>(0);
+    //std::cout << int(_bxs.coeff(2)) << ": " << pulseShapeOOTP.segment<HcalConst::maxSamples>(0).transpose() << std::endl;
 
   }
 
@@ -352,10 +395,10 @@ bool DoMahiAlgo::NNLS() {
   }
 
   //if (doDebug==1) {
-  //  std::cout << "new pulsemat" << std::endl;
-  //  std::cout << _pulseMat << std::endl;
-  //  std::cout << "ampvec" << std::endl;
-  //  std::cout << _ampVec << std::endl;
+  //std::cout << "new pulsemat" << std::endl;
+  //std::cout << _pulseMat << std::endl;
+  //std::cout << "ampvec" << std::endl;
+  //std::cout << _ampVec << std::endl;
   //}
   
   invcovp = _covDecomp.matrixL().solve(_pulseMat);

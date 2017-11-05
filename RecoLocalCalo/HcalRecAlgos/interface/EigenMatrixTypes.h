@@ -1,13 +1,17 @@
 #include <Eigen/Dense>
 
-typedef Eigen::Matrix<double,10,1> SampleVector;
-typedef Eigen::Matrix<double,12,1> FullSampleVector;
-typedef Eigen::Matrix<double,Eigen::Dynamic,1,0,10,1> PulseVector;
-typedef Eigen::Matrix<char,Eigen::Dynamic,1,0,10,1> BXVector;
-typedef Eigen::Matrix<double,10,10> SampleMatrix;
-typedef Eigen::Matrix<double,12,12> FullSampleMatrix;
-typedef Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic,0,10,10> PulseMatrix;
-typedef Eigen::Matrix<double,10,Eigen::Dynamic,0,10,10> SamplePulseMatrix;
+constexpr int SampleVectorSize=10;
+constexpr int FullSampleVectorSize=12;
+constexpr int PulseVectorSize=10;
+
+typedef Eigen::Matrix<double,SampleVectorSize,1> SampleVector;
+typedef Eigen::Matrix<double,FullSampleVectorSize,1> FullSampleVector;
+typedef Eigen::Matrix<double,Eigen::Dynamic,1,0,PulseVectorSize,1> PulseVector;
+typedef Eigen::Matrix<int,Eigen::Dynamic,1,0,PulseVectorSize,1> BXVector;
+typedef Eigen::Matrix<double,SampleVectorSize,SampleVectorSize> SampleMatrix;
+typedef Eigen::Matrix<double,FullSampleVectorSize,FullSampleVectorSize> FullSampleMatrix;
+typedef Eigen::Matrix<double,Eigen::Dynamic,Eigen::Dynamic,0,PulseVectorSize,PulseVectorSize> PulseMatrix;
+typedef Eigen::Matrix<double,10,Eigen::Dynamic,0,SampleVectorSize,SampleVectorSize> SamplePulseMatrix;
 typedef Eigen::LLT<SampleMatrix> SampleDecompLLT;
 typedef Eigen::LLT<PulseMatrix> PulseDecompLLT;
 typedef Eigen::LDLT<PulseMatrix> PulseDecompLDLT;

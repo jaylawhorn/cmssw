@@ -10,7 +10,7 @@
 
 #include "CalibCalorimetry/HcalAlgos/interface/HcalPulseShapes.h"
 #include "CalibCalorimetry/HcalAlgos/interface/HcalTimeSlew.h"
-#include "RecoLocalCalo/HcalRecAlgos/interface/PulseShapeFitOOTPileupCorrection.h"
+#include "RecoLocalCalo/HcalRecAlgos/interface/PulseShapeFunctor.h"
 
 class DoMahiAlgo
 {
@@ -19,7 +19,12 @@ class DoMahiAlgo
   ~DoMahiAlgo() { };
 
   void phase1Apply(const HBHEChannelInfo& channelData, float& reconstructedEnergy, float& chi2);  
-  bool DoFit(SampleVector amplitudes, std::vector<float> &correctedOutput, int nbx);
+  bool DoFit(SampleVector amplitudes, std::vector<float> &correctedOutput);
+
+  void setParameters(bool iDoPrefit, bool iFloatPedestal, bool iApplyTimeSlew, 
+		     HcalTimeSlew::BiasSetting slewFlavor,
+		     double iMeanTime, double iTimeSigmaHPD, double iTimeSigmaSiPM, 
+		     const std::vector <int> &iActiveBXs, int iNMaxIters);
 
   void setPulseShapeTemplate  (const HcalPulseShapes::Shape& ps);
   void resetPulseShapeTemplate(const HcalPulseShapes::Shape& ps);
@@ -30,6 +35,17 @@ class DoMahiAlgo
   const HcalPulseShapes::Shape* currentPulseShape_=nullptr;
 
  private:
+
+  bool doPrefit_;
+  bool floatPedestal_;
+  bool applyTimeSlew_;
+
+  double meanTime_;
+  double timeSigmaHPD_;
+  double timeSigmaSiPM_;
+  std::vector <int> activeBXs_;
+  int nMaxIters_;
+  int nMaxItersNNLS_;
 
   int doDebug;
   bool isHPD;

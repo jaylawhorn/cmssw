@@ -36,6 +36,8 @@ class DoMahiAlgo
 
  private:
 
+  double dt_;
+
   bool doPrefit_;
   bool floatPedestal_;
   bool applyTimeSlew_;
@@ -48,7 +50,7 @@ class DoMahiAlgo
   int nMaxItersNNLS_;
 
   int doDebug;
-  bool isHPD;
+  //bool isHPD;
   HcalTimeSlew::BiasSetting slewFlavor_;
 
   //for pulse shapes

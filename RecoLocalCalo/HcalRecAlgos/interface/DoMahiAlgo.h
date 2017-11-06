@@ -51,6 +51,8 @@ class DoMahiAlgo
   int nMaxIters_;
   int nMaxItersNNLS_;
 
+  int pulseOffset_;
+
   int doDebug;
   //bool isHPD;
   HcalTimeSlew::BiasSetting slewFlavor_;

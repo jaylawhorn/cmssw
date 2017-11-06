@@ -106,7 +106,7 @@ HBHERecHit SimpleHBHEPhase1Algo::reconstruct(const HBHEChannelInfo& info,
     bool useTriple_mahi = false;
     DoMahiAlgo* mahi = psFitMAHIOOTpuCorr_.get();
 
-    if(mahi) {
+    if(mahi && m0E>50) {
       //std::cout << "???" << std::endl;
       //if(info.hasTimeInfo()) {
 

@@ -23,8 +23,7 @@ class DoMahiAlgo
   void phase1Apply(const HBHEChannelInfo& channelData, float& reconstructedEnergy, float& chi2);  
   bool DoFit(SampleVector amplitudes, std::vector<float> &correctedOutput);
 
-  void setParameters(bool iDoPrefit, bool iFloatPedestal, bool iApplyTimeSlew, 
-		     HcalTimeSlew::BiasSetting slewFlavor,
+  void setParameters(bool iApplyTimeSlew, HcalTimeSlew::BiasSetting slewFlavor,
 		     double iMeanTime, double iTimeSigmaHPD, double iTimeSigmaSiPM, 
 		     const std::vector <int> &iActiveBXs, int iNMaxIters);
 
@@ -38,23 +37,20 @@ class DoMahiAlgo
 
  private:
 
-  double dt_;
-
-  bool doPrefit_;
-  bool floatPedestal_;
   bool applyTimeSlew_;
 
   double meanTime_;
   double timeSigmaHPD_;
   double timeSigmaSiPM_;
+
   std::vector <int> activeBXs_;
   int nMaxIters_;
   int nMaxItersNNLS_;
 
+  double dt_;
   int pulseOffset_;
 
   int doDebug;
-  //bool isHPD;
   HcalTimeSlew::BiasSetting slewFlavor_;
 
   //for pulse shapes
@@ -94,15 +90,9 @@ class DoMahiAlgo
   std::unordered_map<int, int> mapBXs;
   //holds full covariance matrix for a pulse shape 
   //varied in time
-  //FullSampleMatrix pulseCov;
-  //FullSampleMatrix pulseCovOOTM;
-  //FullSampleMatrix pulseCovOOTP;
   std::vector<FullSampleMatrix> pulseCovArray;
 
   //holds full pulse shape template
-  //FullSampleVector pulseShape;
-  //FullSampleVector pulseShapeOOTM;
-  //FullSampleVector pulseShapeOOTP;
   std::vector<FullSampleVector> pulseShapeArray;
 
   //holds matrix of pulse shape templates for each BX

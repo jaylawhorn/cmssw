@@ -7,13 +7,10 @@ void eigen_solve_submatrix(PulseMatrix& mat, PulseVector& invec, PulseVector& ou
 DoMahiAlgo::DoMahiAlgo() { 
 }
 
-void DoMahiAlgo::setParameters(bool iDoPrefit, bool iFloatPedestal, bool iApplyTimeSlew, 
-			       HcalTimeSlew::BiasSetting slewFlavor,
+void DoMahiAlgo::setParameters(bool iApplyTimeSlew, HcalTimeSlew::BiasSetting slewFlavor,
 			       double iMeanTime, double iTimeSigmaHPD, double iTimeSigmaSiPM,
 			       const std::vector <int> &iActiveBXs, int iNMaxIters) {
 
-  doPrefit_      = iDoPrefit;
-  floatPedestal_ = iFloatPedestal;
   applyTimeSlew_ = iApplyTimeSlew;
   slewFlavor_    = slewFlavor;
 
@@ -39,8 +36,8 @@ void DoMahiAlgo::phase1Apply(const HBHEChannelInfo& channelData,
   const unsigned cssize = channelData.nSamples();
   _detID = channelData.id();
   
-  if (channelData.hasTimeInfo()) dt_=timeSigmaSiPM_;
-  else dt_=timeSigmaHPD_;
+  if (channelData.hasTimeInfo()) dt_=timeSigmaSiPM_*0.5;
+  else dt_=timeSigmaHPD_*0.5;
   
   //Dark current value for this channel (SiPM only)
   double darkCurrent =  psfPtr_->getSiPMDarkCurrent(channelData.darkCurrent(), 
@@ -119,16 +116,16 @@ void DoMahiAlgo::phase1Apply(const HBHEChannelInfo& channelData,
 bool DoMahiAlgo::DoFit(SampleVector amplitudes, std::vector<float> &correctedOutput) {
   if (doDebug==1) std::cout << "DoFit" << std::endl;
 
-  if (floatPedestal_) 
-    _bxs.resize(activeBXs_.size()+1);
-  else 
-    _bxs.resize(activeBXs_.size());
+  //if (floatPedestal_) 
+  //  _bxs.resize(activeBXs_.size()+1);
+  //else 
+  _bxs.resize(activeBXs_.size());
 
   for (uint ibx=0; ibx<activeBXs_.size(); ibx++) {
     _bxs.coeffRef(ibx) = activeBXs_[ibx];
   }
-  if (floatPedestal_)
-    _bxs.coeffRef(activeBXs_.size()) = 10;
+  //if (floatPedestal_)
+  //_bxs.coeffRef(activeBXs_.size()) = 10;
 
   _nPulseTot = _bxs.rows();  
   _amplitudes = amplitudes;
@@ -147,7 +144,9 @@ bool DoMahiAlgo::DoFit(SampleVector amplitudes, std::vector<float> &correctedOut
 
   pulseOffset_ = -_bxs.minCoeff();
   int OFFSET=0;
-    
+
+  //std::cout << "-------    " << std::endl;
+  
   for (uint i=0; i<_nPulseTot; i++) {
     
     OFFSET=_bxs.coeff(i);
@@ -161,14 +160,22 @@ bool DoMahiAlgo::DoFit(SampleVector amplitudes, std::vector<float> &correctedOut
 			      pulseCovArray.at(i));
 
 
-    double ampCorrection = 1.0/double(pulseShapeArray.at(i).coeff(HcalConst::soi+4));
-    _ampVec.coeffRef(i)=_amplitudes.coeff(HcalConst::soi+OFFSET)*ampCorrection;
+    if (OFFSET==0) {
+      double ampCorrection = 1.0/double(pulseShapeArray.at(i).coeff(HcalConst::soi+4));
+      _ampVec.coeffRef(i)= _amplitudes.coeff(HcalConst::soi+OFFSET)*ampCorrection;
+    }
+    else {
+      _ampVec.coeffRef(i)=0;
+    }
+    //if (abs(OFFSET)<2) std::cout << "start " << OFFSET << ": " << _amplitudes.coeff(HcalConst::soi+OFFSET)*ampCorrection << ", ";
 
     int SEGSTART=std::max(pulseOffset_ - OFFSET, 0);
     _pulseMat.col(i) = pulseShapeArray.at(i).segment<HcalConst::maxSamples>(SEGSTART);
   }
 
-  if (floatPedestal_) {
+  //std::cout << std::endl;
+
+  /*  if (floatPedestal_) {
     OFFSET=_bxs.coeff(_nPulseTot-1);
     mapBXs[OFFSET] = _nPulseTot-1;
     pulseShapeArray.push_back(FullSampleVector::Constant(0.1));
@@ -176,7 +183,7 @@ bool DoMahiAlgo::DoFit(SampleVector amplitudes, std::vector<float> &correctedOut
     
     _ampVec.coeffRef(_nPulseTot-1) = _amplitudes.coeff(0);
     _pulseMat.col(_nPulseTot-1) = pulseShapeArray.at(_nPulseTot-1).segment<HcalConst::maxSamples>(0);
-  }
+    }*/
   
   _chiSq = 9999;
   
@@ -199,15 +206,15 @@ bool DoMahiAlgo::DoFit(SampleVector amplitudes, std::vector<float> &correctedOut
       foundintime = true;
       //std::cout << "intime: " << _ampVec.coeff(ipulse) << ", ";
     }
-    /*else if (_bxs.coeff(ipulse)==10) {
-      std::cout << "pedestal: " << _ampVec.coeff(ipulse) << ", ";
-    }
-    else if (_bxs.coeff(ipulse)==-1) {
-      std::cout << "prev: " << _ampVec.coeff(ipulse) << ", ";
-    }
-    else if (_bxs.coeff(ipulse)==1) {
-      std::cout << "next: " << _ampVec.coeff(ipulse) << ", ";
-      }*/
+    //else if (_bxs.coeff(ipulse)==10) {
+    //  std::cout << "pedestal: " << _ampVec.coeff(ipulse) << ", ";
+    //}
+    //else if (_bxs.coeff(ipulse)==-1) {
+    //  std::cout << "prev: " << _ampVec.coeff(ipulse) << ", ";
+    //}
+    //else if (_bxs.coeff(ipulse)==1) {
+    //  std::cout << "next: " << _ampVec.coeff(ipulse) << ", ";
+    //}
   }
   //std::cout << std::endl;
   if (!foundintime) return status;
@@ -215,7 +222,6 @@ bool DoMahiAlgo::DoFit(SampleVector amplitudes, std::vector<float> &correctedOut
   correctedOutput.clear();
   correctedOutput.push_back(_ampVec.coeff(ipulseintime)); //charge
   correctedOutput.push_back(_chiSq); //chi2
-  
   
   return status;
 }
@@ -257,8 +263,9 @@ bool DoMahiAlgo::Minimize() {
 bool DoMahiAlgo::UpdatePulseShape(double itQ, FullSampleVector &pulseShape, FullSampleMatrix &pulseCov) {
   if (doDebug==1) std::cout << "UpdatePulseShape" << std::endl;
 
-  float t0=0.0;
-  t0=HcalTimeSlew::delay(std::max(1.0, itQ), slewFlavor_);
+  float t0=meanTime_;
+  if (applyTimeSlew_) 
+    t0+=HcalTimeSlew::delay(std::max(1.0, itQ), slewFlavor_);
 
   const double xx[4]={t0, 1.0, 0.0, 3};
   (*pfunctor_)(&xx[0]);
@@ -270,8 +277,8 @@ bool DoMahiAlgo::UpdatePulseShape(double itQ, FullSampleVector &pulseShape, Full
   FullSampleVector pulseShapeM = FullSampleVector::Zero(FullSampleVectorSize);
   FullSampleVector pulseShapeP = FullSampleVector::Zero(FullSampleVectorSize);
 
-  const double xxm[4]={-dt_+t0, 1.0, 0.0, 3};
-  const double xxp[4]={ dt_+t0, 1.0, 0.0, 3};
+  const double xxm[4]={t0-dt_, 1.0, 0.0, 3};
+  const double xxp[4]={t0+dt_, 1.0, 0.0, 3};
 
   if (doDebug==1) {
     std::cout << itQ << ", " << t0 << ", " << -dt_+t0 << ", " << dt_+t0 << std::endl;

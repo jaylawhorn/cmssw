@@ -106,7 +106,7 @@ HBHERecHit SimpleHBHEPhase1Algo::reconstruct(const HBHEChannelInfo& info,
     bool useTriple_mahi = false;
     DoMahiAlgo* mahi = psFitMAHIOOTpuCorr_.get();
 
-    if(mahi && m0E>50) {
+    if(mahi) {
       //std::cout << "???" << std::endl;
       //if(info.hasTimeInfo()) {
 
@@ -129,12 +129,12 @@ HBHERecHit SimpleHBHEPhase1Algo::reconstruct(const HBHEChannelInfo& info,
       //}
     }
 
-    if (m0E>200) {
-      std::cout << "---" << std::endl;
-      std::cout << m0E << ", " << m2E << ", " << m3E << ", " << m10E << " /// " << chi2 << ", " << chi2_mahi << std::endl;
-      for (int ii=0; ii<10; ii++) std::cout << info.tsRawCharge(ii) << ", ";
-      std::cout << std::endl;
-    }
+    //if (m0E>10) {
+    //  std::cout << "---" << std::endl;
+    //  std::cout << m0E << ", " << m2E << ", " << m3E << ", " << m10E << " /// " << chi2 << ", " << chi2_mahi << std::endl;
+    //  for (int ii=0; ii<10; ii++) std::cout << info.tsRawCharge(ii) << ", ";
+    //  std::cout << std::endl;
+    //}
     
     //Yeah, such a hack
     float tdcTime = info.soiRiseTime();

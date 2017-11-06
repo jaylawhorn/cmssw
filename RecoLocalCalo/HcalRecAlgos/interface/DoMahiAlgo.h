@@ -12,6 +12,8 @@
 #include "CalibCalorimetry/HcalAlgos/interface/HcalTimeSlew.h"
 #include "RecoLocalCalo/HcalRecAlgos/interface/PulseShapeFunctor.h"
 
+#include <unordered_map>
+
 class DoMahiAlgo
 {
  public:
@@ -87,16 +89,19 @@ class DoMahiAlgo
   //holds constant pedestal constraint
   double _pedConstraint;
   
+  std::unordered_map<int, int> mapBXs;
   //holds full covariance matrix for a pulse shape 
   //varied in time
-  FullSampleMatrix pulseCov;
-  FullSampleMatrix pulseCovOOTM;
-  FullSampleMatrix pulseCovOOTP;
+  //FullSampleMatrix pulseCov;
+  //FullSampleMatrix pulseCovOOTM;
+  //FullSampleMatrix pulseCovOOTP;
+  std::vector<FullSampleMatrix> pulseCovArray;
 
   //holds full pulse shape template
-  FullSampleVector pulseShape;
-  FullSampleVector pulseShapeOOTM;
-  FullSampleVector pulseShapeOOTP;
+  //FullSampleVector pulseShape;
+  //FullSampleVector pulseShapeOOTM;
+  //FullSampleVector pulseShapeOOTP;
+  std::vector<FullSampleVector> pulseShapeArray;
 
   //holds matrix of pulse shape templates for each BX
   SamplePulseMatrix _pulseMat;

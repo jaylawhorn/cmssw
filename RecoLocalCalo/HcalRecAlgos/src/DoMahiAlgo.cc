@@ -36,8 +36,8 @@ void DoMahiAlgo::phase1Apply(const HBHEChannelInfo& channelData,
   const unsigned cssize = channelData.nSamples();
   _detID = channelData.id();
   
-  if (channelData.hasTimeInfo()) dt_=timeSigmaSiPM_*0.5;
-  else dt_=timeSigmaHPD_*0.5;
+  if (channelData.hasTimeInfo()) dt_=timeSigmaSiPM_;
+  else dt_=timeSigmaHPD_;
   
   //Dark current value for this channel (SiPM only)
   double darkCurrent =  psfPtr_->getSiPMDarkCurrent(channelData.darkCurrent(), 
@@ -49,6 +49,8 @@ void DoMahiAlgo::phase1Apply(const HBHEChannelInfo& channelData,
 			  channelData.tsPedestalWidth(1)*channelData.tsPedestalWidth(1)+
 			  channelData.tsPedestalWidth(2)*channelData.tsPedestalWidth(2)+
 			  channelData.tsPedestalWidth(3)*channelData.tsPedestalWidth(3) );
+
+  if (channelData.hasTimeInfo()) _pedConstraint+=darkCurrent;
 
   std::vector<float> reconstructedVals;
   SampleVector charges;
@@ -204,7 +206,7 @@ bool DoMahiAlgo::DoFit(SampleVector amplitudes, std::vector<float> &correctedOut
     if (_bxs.coeff(ipulse)==0) {
       ipulseintime = ipulse;
       foundintime = true;
-      //std::cout << "intime: " << _ampVec.coeff(ipulse) << ", ";
+      //std::cout << "intime: " << _ampVec.coeff(ipulse) << " vs " << _amplitudes.coeff(4)<< std::endl;
     }
     //else if (_bxs.coeff(ipulse)==10) {
     //  std::cout << "pedestal: " << _ampVec.coeff(ipulse) << ", ";
@@ -256,6 +258,8 @@ bool DoMahiAlgo::Minimize() {
     iter++;
     
   }
+
+  //std::cout << "miniter " << iter << std::endl;
 
   return status;
 }
@@ -339,10 +343,10 @@ bool DoMahiAlgo::UpdateCov() {
 }
 
 bool DoMahiAlgo::NNLS() {
-  if (doDebug==1) std::cout << "NNLS" << std::endl;
+  //if (doDebug==1) 
+  //std::cout << "NNLS" << std::endl;
 
   const unsigned int npulse = _bxs.rows();
-  
   if (doDebug==1) {
     std::cout << "_ampVec" << std::endl;
     std::cout << _ampVec << std::endl;
@@ -387,6 +391,7 @@ bool DoMahiAlgo::NNLS() {
       wmax = updateWork.tail(nActive).maxCoeff(&idxwmax);
       
       if (wmax<threshold || (idxwmax==idxwmaxprev && wmax==wmaxprev)) {
+	//std::cout << "converged" << std::endl;
 	break;
       }
       
@@ -423,6 +428,7 @@ bool DoMahiAlgo::NNLS() {
       auto ampvecpermhead = ampvecpermtest.head(_nP);
 
       if ( ampvecpermhead.minCoeff()>0. ) {
+	//std::cout << "ampvecpermhead" << std::endl;
 	_ampVec.head(_nP) = ampvecpermhead.head(_nP);
 	break;
       }
@@ -467,6 +473,7 @@ bool DoMahiAlgo::NNLS() {
     
     break;
   }
+  //std::cout << "nnlsiter " << iter << std::endl;
   return true;
 }
 

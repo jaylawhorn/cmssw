@@ -130,11 +130,11 @@ HBHERecHit SimpleHBHEPhase1Algo::reconstruct(const HBHEChannelInfo& info,
 	//}
       //}
     }
-
+    
     if (m0E>100) {
       std::cout << "---" << std::endl;
       std::cout << m0E << ", " << m2E << ", " << m3E << ", " << m10E << " /// " << chi2 << ", " << chi2_mahi << std::endl;
-      for (int ii=0; ii<10; ii++) std::cout << info.tsRawCharge(ii) << ", ";
+      for (int ii=0; ii<10; ii++) std::cout << info.tsRawCharge(ii)-info.tsPedestal(ii) << ", ";
       std::cout << std::endl;
     }
     

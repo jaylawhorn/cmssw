@@ -91,7 +91,7 @@ void DoMahiAlgo::phase1Apply(const HBHEChannelInfo& channelData,
     _noiseTerms.coeffRef(ip) = noiseADC*noiseADC + pedWidth*pedWidth;
 
     tsTOT += charge - ped;
-    if( ip==HcalConst::soi || ip==HcalConst::soi+1 ){
+    if( ip==HcalConst::shiftTS || ip==HcalConst::shiftTS+1 ){
       tstrig += (charge - ped);
     }
 
@@ -165,14 +165,14 @@ bool DoMahiAlgo::DoFit(SampleVector amplitudes, std::vector<float> &correctedOut
     pulseShapeArray.push_back(FullSampleVector::Zero(FullSampleVectorSize));
     pulseCovArray.push_back(FullSampleMatrix::Constant(0));
 
-    status = UpdatePulseShape(_amplitudes.coeff(HcalConst::soi+OFFSET), 
+    status = UpdatePulseShape(_amplitudes.coeff(HcalConst::shiftTS+OFFSET), 
 			      pulseShapeArray.at(i), 
 			      pulseCovArray.at(i));
 
 
     if (OFFSET==0) {
-      //double ampCorrection = 1.0 + double(pulseShapeArray.at(i).coeff(HcalConst::soi+5));
-      _ampVec.coeffRef(i)= _amplitudes.coeff(HcalConst::soi+OFFSET);//*ampCorrection;
+      //double ampCorrection = 1.0 + double(pulseShapeArray.at(i).coeff(HcalConst::shiftTS+5));
+      _ampVec.coeffRef(i)= _amplitudes.coeff(HcalConst::shiftTS+OFFSET);//*ampCorrection;
     }
     else {
       _ampVec.coeffRef(i)=0;
@@ -525,7 +525,7 @@ void DoMahiAlgo::setPulseShapeTemplate(const HcalPulseShapes::Shape& ps) {
 
 void DoMahiAlgo::resetPulseShapeTemplate(const HcalPulseShapes::Shape& ps) { 
   ++ cntsetPulseShape;
-  psfPtr_.reset(new FitterFuncs::PulseShapeFunctor(ps,false,false,false,false,1,0,2.5,0,0.00065,1));
+  psfPtr_.reset(new FitterFuncs::PulseShapeFunctor(ps,false,false,false,false,1,0,2.5,0,0.00065,1,10));
   pfunctor_    = std::unique_ptr<ROOT::Math::Functor>( new ROOT::Math::Functor(psfPtr_.get(),&FitterFuncs::PulseShapeFunctor::singlePulseShapeFunc, 3) );
 
 }

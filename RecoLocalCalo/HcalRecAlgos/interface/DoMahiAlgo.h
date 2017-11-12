@@ -39,6 +39,8 @@ class DoMahiAlgo
 
   bool applyTimeSlew_;
 
+  double fcByPe_;
+
   double meanTime_;
   double timeSigmaHPD_;
   double timeSigmaSiPM_;

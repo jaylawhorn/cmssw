@@ -156,6 +156,8 @@ bool DoMahiAlgo::DoFit(SampleVector amplitudes, std::vector<float> &correctedOut
   //pulseOffset_ = -_bxs.minCoeff();
   pulseOffset_=4;
   int OFFSET=0;
+
+  double ampCorr = 1.0;
   
   for (uint i=0; i<_nPulseTot; i++) {
     
@@ -171,7 +173,8 @@ bool DoMahiAlgo::DoFit(SampleVector amplitudes, std::vector<float> &correctedOut
 
 
     if (OFFSET==0) {
-      //double ampCorrection = 1.0 + double(pulseShapeArray.at(i).coeff(HcalConst::shiftTS+5));
+      ampCorr = 1.0 + double(pulseShapeArray.at(i).coeff(HcalConst::shiftTS+pulseOffset_+1));
+      //std::cout << HcalConst::shiftTS+5 << std::endl;
       _ampVec.coeffRef(i)= _amplitudes.coeff(HcalConst::shiftTS+OFFSET);//*ampCorrection;
     }
     else {
@@ -216,7 +219,7 @@ bool DoMahiAlgo::DoFit(SampleVector amplitudes, std::vector<float> &correctedOut
   if (!foundintime) return status;
 
   correctedOutput.clear();
-  correctedOutput.push_back(_ampVec.coeff(ipulseintime)); //charge
+  correctedOutput.push_back(_ampVec.coeff(ipulseintime)*ampCorr); //charge
   correctedOutput.push_back(_chiSq); //chi2
   
   return status;
@@ -321,15 +324,15 @@ bool DoMahiAlgo::UpdateCov() {
   bool status=true;
 
   _invCovMat = _noiseTerms.asDiagonal();
-  _invCovMat += _pedConstraint*SampleMatrix::Ones();
+  //_invCovMat += _pedConstraint*SampleMatrix::Ones();
   //
-  for (int k=0; k< _ampVec.size(); k++) {
-    if (_ampVec.coeff(k)==0) continue;
-    
-    int OFFSET=_bxs.coeff(k);
-    _invCovMat += _ampVec.coeff(k)*_ampVec.coeff(k)*pulseCovArray.at(mapBXs[OFFSET]).block(4-OFFSET, 4-OFFSET, HcalConst::maxSamples, HcalConst::maxSamples);
-    _invCovMat += _ampVec.coeff(k)*_ampVec.coeff(k)*fcByPe_*fcByPe_*SampleMatrix::Ones();
-  }
+  //for (int k=0; k< _ampVec.size(); k++) {
+  //  if (_ampVec.coeff(k)==0) continue;
+  //  
+  //  int OFFSET=_bxs.coeff(k);
+  //  _invCovMat += _ampVec.coeff(k)*_ampVec.coeff(k)*pulseCovArray.at(mapBXs[OFFSET]).block(4-OFFSET, 4-OFFSET, HcalConst::maxSamples, HcalConst::maxSamples);
+  //  _invCovMat += _ampVec.coeff(k)*_ampVec.coeff(k)*fcByPe_*fcByPe_*SampleMatrix::Ones();
+  //}
 
   //if (doDebug==1) {
   //std::cout << "cov" << std::endl;

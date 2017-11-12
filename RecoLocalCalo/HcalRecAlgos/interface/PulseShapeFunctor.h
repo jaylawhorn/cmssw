@@ -20,7 +20,11 @@ namespace HcalConst{
    constexpr int nsPerBX = 25;
    constexpr float iniTimeShift = 92.5f;
    constexpr double invertnsPerBx = 0.04;
+<<<<<<< HEAD
    constexpr int shiftTS = 4;
+=======
+   constexpr int soi = 4;
+>>>>>>> 3e402b84c79b4313ba677b0d37a07cebd2508868
 
 }
 
@@ -30,7 +34,11 @@ namespace FitterFuncs{
       public:
      PulseShapeFunctor(const HcalPulseShapes::Shape& pulse,bool iPedestalConstraint, bool iTimeConstraint,bool iAddPulseJitter,bool iAddTimeSlew,
 		       double iPulseJitter,double iTimeMean,double iTimeSig,double iPedMean,double iPedSig,
+<<<<<<< HEAD
 		       double iNoise, unsigned int nSamplesToFit);
+=======
+		       double iNoise);
+>>>>>>> 3e402b84c79b4313ba677b0d37a07cebd2508868
      ~PulseShapeFunctor();
      
      double EvalPulse(const double *pars, unsigned int nPar);
@@ -68,8 +76,12 @@ namespace FitterFuncs{
      std::vector<float> accVarLenIdxMinusOneVec, diffVarItvlIdxMinusOneVec;
      void funcHPDShape(std::array<double,HcalConst::maxSamples> & ntmpbin, const double &pulseTime, const double &pulseHeight,const double &slew);
      double psFit_x[HcalConst::maxSamples], psFit_y[HcalConst::maxSamples], psFit_erry[HcalConst::maxSamples], psFit_erry2[HcalConst::maxSamples], psFit_slew[HcalConst::maxSamples];
+<<<<<<< HEAD
 
      unsigned nSamplesToFit_;
+=======
+     
+>>>>>>> 3e402b84c79b4313ba677b0d37a07cebd2508868
      bool pedestalConstraint_;
      bool timeConstraint_;
      bool addPulseJitter_;

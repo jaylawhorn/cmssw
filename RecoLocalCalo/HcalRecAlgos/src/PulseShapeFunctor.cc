@@ -161,7 +161,7 @@ namespace FitterFuncs{
 	}
       }
 
-      for (i=0;i<nSamplesToFit_; ++i) 
+      for (i=0;i<nbins; ++i) 
         chisq += (psFit_y[i]- pulse_shape_sum_[i])*(psFit_y[i]- pulse_shape_sum_[i])/psFit_erry2[i];
 
       if(pedestalConstraint_) {

@@ -71,10 +71,10 @@ void DoMahiAlgo::phase1Apply(const HBHEChannelInfo& channelData,
     double noiseADC = (1./sqrt(12))*channelData.tsDFcPerADC(ip);
 
     //Dark current (for SiPMs)
-    //double noiseDC=0;
-    //if((channelData.hasTimeInfo()) && (charge-ped)>channelData.tsPedestalWidth(ip)) {
-    //  noiseDC = darkCurrent;
-    //}
+    double noiseDC=0;
+    if((channelData.hasTimeInfo()) && (charge-ped)>channelData.tsPedestalWidth(ip)) {
+      noiseDC = darkCurrent;
+    }
 
     //Photostatistics
     //double noisePhoto = 0;
@@ -87,38 +87,21 @@ void DoMahiAlgo::phase1Apply(const HBHEChannelInfo& channelData,
 
     //Total uncertainty from all sources
     //_noiseTerms.coeffRef(ip) = noiseADC*noiseADC + noiseDC*noiseDC + noisePhoto*noisePhoto + pedWidth*pedWidth;
-    //_noiseTerms.coeffRef(ip) = noiseADC*noiseADC + noisePhoto*noisePhoto + pedWidth*pedWidth;
-    _noiseTerms.coeffRef(ip) = noiseADC*noiseADC + pedWidth*pedWidth;
+    _noiseTerms.coeffRef(ip) = noiseADC*noiseADC + pedWidth*pedWidth + noiseDC*noiseDC;
 
     tsTOT += charge - ped;
-    if( ip==HcalConst::shiftTS || ip==HcalConst::shiftTS+1 ){
+    if( ip==HcalConst::shiftTS) {// || ip==HcalConst::shiftTS+1 ){
       tstrig += (charge - ped);
     }
 
   }
 
-  //if (tsTOT>100) doDebug=2;
-
-  //  if (doDebug==2) {
-  //std::cout << "----debugging info" << std::endl;
-  //std::cout << charges.transpose() << std::endl;
-  //}
-
   bool status =false;
   if(tstrig >= 0) {
-    //std::cout << "----debugging info" << std::endl;
-    //std::cout << charges.transpose() << std::endl;
-    //std::cout << _noiseTerms.transpose() << std::endl;
-  
     status = DoFit(charges,reconstructedVals); 
-    
   }
-  //else {
-  //  std::cout << "not calling mahi" << std::endl;
-  //}
   
   if (!status) {
-    if (doDebug==1) std::cout << "give up? " << std::endl;
     reconstructedVals.clear();
     reconstructedVals.push_back(0.);
     reconstructedVals.push_back(888.);
@@ -153,7 +136,6 @@ bool DoMahiAlgo::DoFit(SampleVector amplitudes, std::vector<float> &correctedOut
   pulseCovArray.clear();
   mapBXs.clear();
 
-  //pulseOffset_ = -_bxs.minCoeff();
   pulseOffset_=4;
   int OFFSET=0;
 
@@ -174,8 +156,7 @@ bool DoMahiAlgo::DoFit(SampleVector amplitudes, std::vector<float> &correctedOut
 
     if (OFFSET==0) {
       ampCorr = 1.0 + double(pulseShapeArray.at(i).coeff(HcalConst::shiftTS+pulseOffset_+1));
-      //std::cout << HcalConst::shiftTS+5 << std::endl;
-      _ampVec.coeffRef(i)= _amplitudes.coeff(HcalConst::shiftTS+OFFSET);//*ampCorrection;
+      _ampVec.coeffRef(i)= _amplitudes.coeff(HcalConst::shiftTS+OFFSET);
     }
     else {
       _ampVec.coeffRef(i)=0;
@@ -248,8 +229,7 @@ bool DoMahiAlgo::Minimize() {
     
     _chiSq = newChiSq;
     
-    //if (doDebug==1) 
-    //std::cout << "chiSq = " << _chiSq << ", " << deltaChiSq << std::endl;
+    if (doDebug==1) std::cout << "chiSq = " << _chiSq << ", " << deltaChiSq << std::endl;
 
     if (std::abs(deltaChiSq)<1e-3) break;
     
@@ -270,19 +250,17 @@ bool DoMahiAlgo::UpdatePulseShape(double itQ, FullSampleVector &pulseShape, Full
   if (applyTimeSlew_) 
     t0+=HcalTimeSlew::delay(std::max(1.0, itQ), slewFlavor_);
 
-
   const double xx[4]={t0, 1.0, 0.0, 3};
   (*pfunctor_)(&xx[0]);
 
-  double normP=psfPtr_->getPulseShape(4);
+  std::array<double, HcalConst::maxSamples> pulseN;
+  psfPtr_->getPulseShape(pulseN);
 
-  for (int i=-4; i<15; i++) {
-    pulseShape.coeffRef(i+4) = psfPtr_->getPulseShape(i)/normP;
+  for (int i=4; i<14; i++) {
+    pulseShape.coeffRef(i) = pulseN[i-4];
   }
-
-  FullSampleVector pulseShapeM = FullSampleVector::Zero(FullSampleVectorSize);
-  FullSampleVector pulseShapeP = FullSampleVector::Zero(FullSampleVectorSize);
-
+  std::array<double, HcalConst::maxSamples> pulseM;
+  std::array<double, HcalConst::maxSamples> pulseP;
   const double xxm[4]={t0-dt_, 1.0, 0.0, 3};
   const double xxp[4]={t0+dt_, 1.0, 0.0, 3};
 
@@ -291,27 +269,22 @@ bool DoMahiAlgo::UpdatePulseShape(double itQ, FullSampleVector &pulseShape, Full
   }
 
   (*pfunctor_)(&xxm[0]);
-  normP=psfPtr_->getPulseShape(4);
-  for (int i=-4; i<15; i++) {
-    pulseShapeM.coeffRef(i+4) = psfPtr_->getPulseShape(i)/normP;
-  }
+  psfPtr_->getPulseShape(pulseM);
+
   (*pfunctor_)(&xxp[0]);
-  normP=psfPtr_->getPulseShape(4);
-  for (int i=-4; i<15; i++) {
-    pulseShapeP.coeffRef(i+4) = psfPtr_->getPulseShape(i)/normP;
-  }
-  for (int i=0; i<19; i++) {
-    for (int j=0; j<i+1; j++) {
-      
-      double tmp=0.5*((pulseShapeP.coeff(i)-pulseShape.coeff(i))*(pulseShapeP.coeff(j)-pulseShape.coeff(j))
-		      + (pulseShapeM.coeff(i)-pulseShape.coeff(i))*(pulseShapeM.coeff(j)-pulseShape.coeff(j)));
+  psfPtr_->getPulseShape(pulseP);
+
+  for (int i=4; i<14; i++) {
+    for (int j=4; j<i+1; j++) {
+
+      double tmp=0.5*((pulseP[i-4]-pulseN[i-4])*(pulseP[j-4]-pulseN[j-4])
+		      + (pulseM[i-4]-pulseN[i-4])*(pulseM[j-4]-pulseN[j-4]));
       
       pulseCov(i,j) += tmp;
       pulseCov(j,i) += tmp;
       
     }
   }
-
 
   return true;  
 }
@@ -324,21 +297,21 @@ bool DoMahiAlgo::UpdateCov() {
   bool status=true;
 
   _invCovMat = _noiseTerms.asDiagonal();
-  //_invCovMat += _pedConstraint*SampleMatrix::Ones();
-  //
-  //for (int k=0; k< _ampVec.size(); k++) {
-  //  if (_ampVec.coeff(k)==0) continue;
-  //  
-  //  int OFFSET=_bxs.coeff(k);
-  //  _invCovMat += _ampVec.coeff(k)*_ampVec.coeff(k)*pulseCovArray.at(mapBXs[OFFSET]).block(4-OFFSET, 4-OFFSET, HcalConst::maxSamples, HcalConst::maxSamples);
-  //  _invCovMat += _ampVec.coeff(k)*_ampVec.coeff(k)*fcByPe_*fcByPe_*SampleMatrix::Ones();
-  //}
-
-  //if (doDebug==1) {
-  //std::cout << "cov" << std::endl;
-  //std::cout << _invCovMat << std::endl;
-  //std::cout << "..." << std::endl;
-  //}
+  _invCovMat += _pedConstraint*SampleMatrix::Ones();
+  
+  for (int k=0; k< _ampVec.size(); k++) {
+    if (_ampVec.coeff(k)==0) continue;
+    
+    int OFFSET=_bxs.coeff(k);
+    _invCovMat += _ampVec.coeff(k)*_ampVec.coeff(k)*pulseCovArray.at(mapBXs[OFFSET]).block(4-OFFSET, 4-OFFSET, HcalConst::maxSamples, HcalConst::maxSamples);
+    _invCovMat += _ampVec.coeff(k)*fcByPe_*SampleMatrix::Ones();
+  }
+  
+  if (doDebug==1) {
+    std::cout << "cov" << std::endl;
+    std::cout << _invCovMat << std::endl;
+    std::cout << "..." << std::endl;
+  }
   
   _covDecomp.compute(_invCovMat);
   
@@ -346,8 +319,8 @@ bool DoMahiAlgo::UpdateCov() {
 }
 
 bool DoMahiAlgo::NNLS() {
-  //if (doDebug==1) 
-  //std::cout << "NNLS" << std::endl;
+  if (doDebug==1) 
+    std::cout << "NNLS" << std::endl;
 
   const unsigned int npulse = _bxs.rows();
   if (doDebug==1) {
@@ -366,15 +339,15 @@ bool DoMahiAlgo::NNLS() {
     }
   }
 
-  //if (doDebug==1) {
-  //std::cout << "----- Problem statement: " << std::endl;
-  //std::cout << "new ampvec " << std::endl;
-  //std::cout << _ampVec.transpose() << std::endl;
-  //std::cout << "new pulsemat" << std::endl;
-  //std::cout << _ampVec.transpose()*_pulseMat.transpose() << std::endl; //*_ampVec.coeff(0) << std::endl;
-  //std::cout << "ampvec" << std::endl;
-  //std::cout << _ampVec.transpose() << std::endl;
-  //}
+  if (doDebug==1) {
+    std::cout << "----- Problem statement: " << std::endl;
+    std::cout << "new ampvec " << std::endl;
+    std::cout << _ampVec.transpose() << std::endl;
+    std::cout << "new pulsemat" << std::endl;
+    std::cout << _ampVec.transpose()*_pulseMat.transpose() << std::endl; //*_ampVec.coeff(0) << std::endl;
+    std::cout << "ampvec" << std::endl;
+    std::cout << _ampVec.transpose() << std::endl;
+  }
   
   invcovp = _covDecomp.matrixL().solve(_pulseMat);
   aTaMat = invcovp.transpose()*invcovp;
@@ -386,35 +359,27 @@ bool DoMahiAlgo::NNLS() {
   double threshold = 1e-11;
 
   while (true) {    
-    //std::cout << "while loop " << std::endl;
     if (iter>0 || _nP==0) {
-      //std::cout << "meep?" << std::endl;
       if ( _nP==npulse ) break;
       
       const unsigned int nActive = npulse - _nP;
-      //std::cout << "nActive = " << nActive << std::endl;
       updateWork = aTbVec - aTaMat*_ampVec;
-      //std::cout << "updateWork " << updateWork.transpose() << std::endl;
 
       Index idxwmaxprev = idxwmax;
       double wmaxprev = wmax;
       wmax = updateWork.tail(nActive).maxCoeff(&idxwmax);
       
       if (wmax<threshold || (idxwmax==idxwmaxprev && wmax==wmaxprev)) {
-	//std::cout << "converged" << std::endl;
 	break;
       }
       
       if (iter>=nMaxItersNNLS_) {
-	//std::cout << "Max Iterations reached!" << std::endl;
 	break;
       }
 
       //unconstrain parameter
       Index idxp = _nP + idxwmax;
 
-      //if (iter==0) std::cout << "BXS SWAP " << _bxs.coeffRef(_nP) << ", " << _bxs.coeffRef(idxp) << std::endl;
-      
       aTaMat.col(_nP).swap(aTaMat.col(idxp));
       aTaMat.row(_nP).swap(aTaMat.row(idxp));
       _pulseMat.col(_nP).swap(_pulseMat.col(idxp));
@@ -423,12 +388,9 @@ bool DoMahiAlgo::NNLS() {
       std::swap(_bxs.coeffRef(_nP),_bxs.coeffRef(idxp));
 
       wVec.tail(nActive) = updateWork.tail(nActive); 
-      //std::cout << "????" << std::endl;
       ++_nP;
 
     }
-
-    //std::cout << "between the wires " << _nP << std::endl;
 
     while (true) {
       if (_nP==0) break;     
@@ -436,29 +398,15 @@ bool DoMahiAlgo::NNLS() {
       ampvecpermtest = _ampVec;
 
       eigen_solve_submatrix(aTaMat,aTbVec,ampvecpermtest,_nP);
-      //std::cout << ampvecpermtest.transpose() << std::endl;
-      //check solution    
-      //std::cout << "nP..... " << _nP << std::endl;
-      //auto ampvecpermhead = ampvecpermtest.head(_nP);
-
-      //if ( ampvecpermhead.minCoeff()>0. ) {
-      //	//std::cout << "ampvecpermhead" << std::endl;
-      //	std::cout << ampvecpermhead.minCoeff() << " ???" << std::endl;
-      //	_ampVec.head(_nP) = ampvecpermhead.head(_nP);
-      //	break;
-      //}
 
       //check solution
       bool positive = true;
       for (unsigned int i = 0; i < _nP; ++i)
         positive &= (ampvecpermtest(i) > 0);
       if (positive) {
-	//std::cout << "idek man, " << _nP << std::endl;
         _ampVec.head(_nP) = ampvecpermtest.head(_nP);
         break;
       } 
-
-      //if (iter!=0) std::cout << "wow got to nnls part!" << std::endl;
 
       //update parameter vector
       Index minratioidx=0;
@@ -488,8 +436,6 @@ bool DoMahiAlgo::NNLS() {
       std::swap(_bxs.coeffRef(_nP-1),_bxs.coeffRef(minratioidx));
       --_nP;
 
-      //std::cout << "end of second looppppp " << _nP << std::endl;
-
     }
    
     ++iter;
@@ -500,21 +446,16 @@ bool DoMahiAlgo::NNLS() {
       threshold *= 10.;
     }
 
-    //std::cout << "wtf" << std::endl;
 
     break;
   }
-  //std::cout << "nnlsiter " << iter << std::endl;
   return true;
 }
 
 
 double DoMahiAlgo::CalculateChiSq() {
-  //std::cout << "CalculateChiSq" << std::endl;
-
   return _covDecomp.matrixL().solve(_pulseMat*_ampVec - _amplitudes).squaredNorm();
 
-  //return 0.0;
 }
 
 void DoMahiAlgo::setPulseShapeTemplate(const HcalPulseShapes::Shape& ps) {

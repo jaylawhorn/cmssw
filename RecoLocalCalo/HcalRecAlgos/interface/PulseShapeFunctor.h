@@ -52,11 +52,9 @@ namespace FitterFuncs{
      double doublePulseShapeFunc( const double *x );
      double triplePulseShapeFunc( const double *x );
 
-     double getPulseShape(int i) { 
-       if (i>=0 && i<HcalConst::maxSamples)
-	 return pulse_shape_[i]; 
-       else
-	 return 0;
+     void getPulseShape(std::array<double,HcalConst::maxSamples>& fillPulseShape) { 
+       fillPulseShape = pulse_shape_;
+       //return pulse_shape_; 
      }
      
    private:
@@ -66,6 +64,7 @@ namespace FitterFuncs{
      std::vector<float> acc25nsVec, diff25nsItvlVec;
      std::vector<float> accVarLenIdxZEROVec, diffVarItvlIdxZEROVec;
      std::vector<float> accVarLenIdxMinusOneVec, diffVarItvlIdxMinusOneVec;
+
      void funcHPDShape(std::array<double,HcalConst::maxSamples> & ntmpbin, const double &pulseTime, const double &pulseHeight,const double &slew);
      double psFit_x[HcalConst::maxSamples], psFit_y[HcalConst::maxSamples], psFit_erry[HcalConst::maxSamples], psFit_erry2[HcalConst::maxSamples], psFit_slew[HcalConst::maxSamples];
 

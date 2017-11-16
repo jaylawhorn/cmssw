@@ -126,10 +126,6 @@ bool DoMahiAlgo::DoFit(SampleVector amplitudes, std::vector<float> &correctedOut
     pulseShapeArray_[iBX] = FullSampleVector::Zero(MaxFSVSize);
     pulseCovArray_[iBX]   = FullSampleMatrix::Constant(0);
 
-    status = UpdatePulseShape(amplitudes_.coeff(TSOffset_+offset), 
-			      pulseShapeArray_[iBX], 
-			      pulseCovArray_[iBX]);
-
     if (offset==0) {
       fullPulseCorr_ = 1.0/double(pulseShapeArray_[iBX].coeff(FullTSofInterest_));
       ampVec_.coeffRef(iBX)= amplitudes_.coeff(TSOffset_);
@@ -137,6 +133,11 @@ bool DoMahiAlgo::DoFit(SampleVector amplitudes, std::vector<float> &correctedOut
     else {
       ampVec_.coeffRef(iBX)=0;
     }
+
+    status = UpdatePulseShape(amplitudes_.coeff(TSOffset_ + iBX), 
+			      pulseShapeArray_[iBX], 
+			      pulseCovArray_[iBX]);
+
 
     pulseMat_.col(iBX) = pulseShapeArray_[iBX].segment(FullTSOffset_ + iBX, TSSize_);
   }
@@ -180,7 +181,7 @@ bool DoMahiAlgo::Minimize() {
       std::cout << "max number of iterations reached! " << std::endl;
       break;
     }
-    
+
     status=UpdateCov();
     if (!status) break;
     
@@ -193,7 +194,7 @@ bool DoMahiAlgo::Minimize() {
     chiSq_ = newChiSq;
     
     if (std::abs(deltaChiSq)<1e-3) break;
-    
+
     iter++;
     
   }
@@ -215,9 +216,6 @@ bool DoMahiAlgo::UpdatePulseShape(double itQ, FullSampleVector &pulseShape, Full
 
   psfPtr_->getPulseShape(pulseN_);
 
-  for (unsigned int iTS=FullTSOffset_; iTS<FullTSOffset_ + TSSize_; iTS++) {
-    pulseShape.coeffRef(iTS) = pulseN_[iTS-FullTSOffset_];
-  }
   const double xxm[4]={t0-dt_, 1.0, 0.0, 3};
   const double xxp[4]={t0+dt_, 1.0, 0.0, 3};
 
@@ -227,14 +225,18 @@ bool DoMahiAlgo::UpdatePulseShape(double itQ, FullSampleVector &pulseShape, Full
   (*pfunctor_)(&xxp[0]);
   psfPtr_->getPulseShape(pulseP_);
 
+  for (unsigned int iTS=FullTSOffset_; iTS<FullTSOffset_ + TSSize_; iTS++) {
+    pulseShape.coeffRef(iTS) = pulseN_[iTS-FullTSOffset_];
+    pulseM_[iTS-FullTSOffset_]-=pulseN_[iTS-FullTSOffset_];
+    pulseP_[iTS-FullTSOffset_]-=pulseN_[iTS-FullTSOffset_];
+  }
+
   for (unsigned int iTS=FullTSOffset_; iTS<FullTSOffset_+TSSize_; iTS++) {
     for (unsigned int jTS=FullTSOffset_; jTS<iTS+1; jTS++) {
 
-      float tmp=0.5*((pulseP_[iTS-FullTSOffset_]-pulseN_[iTS-FullTSOffset_])
-		     *(pulseP_[jTS-FullTSOffset_]-pulseN_[jTS-FullTSOffset_])
-		      + (pulseM_[iTS-FullTSOffset_]-pulseN_[iTS-FullTSOffset_])
-		     *(pulseM_[jTS-FullTSOffset_]-pulseN_[jTS-FullTSOffset_]));
-      
+      float tmp=0.5*(pulseP_[iTS-FullTSOffset_]*pulseP_[jTS-FullTSOffset_]
+		     + pulseM_[iTS-FullTSOffset_]*pulseM_[jTS-FullTSOffset_]);
+		     
       pulseCov(iTS,jTS) += tmp;
       pulseCov(jTS,iTS) += tmp;
       
@@ -277,8 +279,8 @@ bool DoMahiAlgo::NNLS() {
   }
 
   invcovp_ = covDecomp_.matrixL().solve(pulseMat_);
-  aTaMat_ = invcovp_.transpose()*invcovp_;
-  aTbVec_ = invcovp_.transpose()*covDecomp_.matrixL().solve(amplitudes_);
+  aTaMat_.noalias() = invcovp_.transpose().lazyProduct(invcovp_);
+  aTbVec_.noalias() = invcovp_.transpose().lazyProduct(covDecomp_.matrixL().solve(amplitudes_));
   
   int iter = 0;
   Index idxwmax = 0;

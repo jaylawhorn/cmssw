@@ -60,7 +60,7 @@ HBHERecHit SimpleHBHEPhase1Algo::reconstruct(const HBHEChannelInfo& info,
     const HcalDetId channelId(info.id());
 
     // Calculate "Method 0" quantities
-    float m0E = 0.f;//, m0t = 0.f;
+    float m0E = 0.f, m0t = 0.f;
     {
         int ibeg = static_cast<int>(info.soi()) + firstSampleShift_;
         if (ibeg < 0)
@@ -100,7 +100,7 @@ HBHERecHit SimpleHBHEPhase1Algo::reconstruct(const HBHEChannelInfo& info,
 
     // Run "Mahi"
     float m10E = 0.f, chi2_mahi = -1.f;
-    //float m10T = 0.f;
+    float m10T = 0.f;
     //bool useTriple_mahi = false;
     DoMahiAlgo* mahi = psFitMAHIOOTpuCorr_.get();
 
@@ -111,26 +111,31 @@ HBHERecHit SimpleHBHEPhase1Algo::reconstruct(const HBHEChannelInfo& info,
     }
 
     // Finally, construct the rechit
-    /*float rhE = m0E;
+    float rhE = m0E;
     float rht = m0t;
-    if (method2)
-    {
-        rhE = m2E;
+    if (mahi) 
+      {
+	rhE = m10E;
+	rht = m10T;
+      }
+    else if (method2)
+      {
+	rhE = m2E;
         rht = m2t;
-    }
+      }
     else if (method3)
-    {
+      {
         rhE = m3E;
         rht = m3t;
-	}*/
+      }
     float tdcTime = info.soiRiseTime();
     if (!HcalSpecialTimes::isSpecial(tdcTime))
         tdcTime += timeShift_;
     //hack
-    rh = HBHERecHit(channelId, m10E, chi2_mahi, tdcTime);
+    rh = HBHERecHit(channelId, rhE, rht, tdcTime);
     rh.setRawEnergy(m3E);
     rh.setAuxEnergy(m2E);
-    rh.setChiSquared(chi2);
+    rh.setChiSquared(chi2_mahi);
 
     // Set rechit aux words
     HBHERecHitAuxSetter::setAux(info, &rh);

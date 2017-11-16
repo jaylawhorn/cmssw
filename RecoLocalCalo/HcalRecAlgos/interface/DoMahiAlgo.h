@@ -37,32 +37,36 @@ class DoMahiAlgo
 
   bool applyTimeSlew_;
 
-  double fcByPe_;
+  float fcByPe_;
+  float meanTime_;
+  float timeSigmaHPD_;
+  float timeSigmaSiPM_;
+  float dt_;
 
-  double meanTime_;
-  double timeSigmaHPD_;
-  double timeSigmaSiPM_;
-
-  std::vector <int> activeBXs_;
   int nMaxIters_;
   int nMaxItersNNLS_;
-
-  double dt_;
-  int pulseOffset_;
+  std::vector <int> activeBXs_;
 
   HcalTimeSlew::BiasSetting slewFlavor_;
-
   //for pulse shapes
   int cntsetPulseShape;
 
-  unsigned int nPulseTot_;
+  unsigned int BXSize_;
+  int BXOffset_;
+
+  const unsigned int TSSize_;
+  const unsigned int TSOffset_;
+
+  const unsigned int FullTSSize_;
+  const unsigned int FullTSofInterest_;
+  const unsigned int FullTSOffset_;
 
   //holds active bunch crossings
   BXVector bxs_;
 
   BXVector bxsMin_;
   unsigned int nP_;
-  double chiSq_;
+  float chiSq_;
 
   std::unique_ptr<FitterFuncs::PulseShapeFunctor> psfPtr_;
   std::unique_ptr<ROOT::Math::Functor> pfunctor_;
@@ -70,28 +74,34 @@ class DoMahiAlgo
   bool Minimize();
   bool UpdateCov();
   bool UpdatePulseShape(double itQ, FullSampleVector &pulseShape, FullSampleMatrix &pulseCov);
-  double CalculateChiSq();
+  float CalculateChiSq();
   bool NNLS();
 
   //holds data samples
   SampleVector amplitudes_;
-  //holds corrections per pulse for TS4->whole pulse charge
-  SampleVector fullPulseCorrection_;
   //holds inverse covariance matrix
   SampleMatrix invCovMat_;
 
   //holds diagonal noise terms
   SampleVector noiseTerms_;
   //holds constant pedestal constraint
-  double pedConstraint_;
+  float pedConstraint_;
+
+  //holds corrections per pulse for TS4->whole pulse charge
+  float fullPulseCorr_;
   
-  std::unordered_map<int, int> mapBXs;
+  //std::unordered_map<int, int> mapBXs;
   //holds full covariance matrix for a pulse shape 
   //varied in time
-  std::vector<FullSampleMatrix> pulseCovArray_;
+  std::array<FullSampleMatrix, MaxPVSize> pulseCovArray_;
 
   //holds full pulse shape template
-  std::vector<FullSampleVector> pulseShapeArray_;
+  std::array<FullSampleVector, MaxPVSize> pulseShapeArray_;
+
+  //holders for calculating pulse shape & covariance matrices
+  std::array<double, HcalConst::maxSamples> pulseN_;
+  std::array<double, HcalConst::maxSamples> pulseM_;
+  std::array<double, HcalConst::maxSamples> pulseP_;
 
   //holds matrix of pulse shape templates for each BX
   SamplePulseMatrix pulseMat_;

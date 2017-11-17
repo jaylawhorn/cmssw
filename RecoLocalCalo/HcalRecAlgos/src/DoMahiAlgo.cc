@@ -5,16 +5,16 @@
 void eigen_solve_submatrix(PulseMatrix& mat, PulseVector& invec, PulseVector& outvec, unsigned NP);
 
 DoMahiAlgo::DoMahiAlgo() :
-  TSSize_(10),
-  TSOffset_(4),
   FullTSSize_(19),
-  FullTSofInterest_(8),
-  FullTSOffset_(4) // FullTSofInterest - TSOffset
+  FullTSofInterest_(8)
 {}
 
-void DoMahiAlgo::setParameters(bool iApplyTimeSlew, HcalTimeSlew::BiasSetting slewFlavor,
+void DoMahiAlgo::setParameters(double iTS4Thresh, bool iApplyTimeSlew, HcalTimeSlew::BiasSetting slewFlavor,
 			       double iMeanTime, double iTimeSigmaHPD, double iTimeSigmaSiPM,
-			       const std::vector <int> &iActiveBXs, int iNMaxIters) {
+			       const std::vector <int> &iActiveBXs, int iNMaxItersMin, int iNMaxItersNNLS,
+			       double iDeltaChiSqThresh, double iNnlsThresh) {
+
+  TS4Thresh_     = iTS4Thresh;
 
   applyTimeSlew_ = iApplyTimeSlew;
   slewFlavor_    = slewFlavor;
@@ -22,9 +22,14 @@ void DoMahiAlgo::setParameters(bool iApplyTimeSlew, HcalTimeSlew::BiasSetting sl
   meanTime_      = iMeanTime;
   timeSigmaHPD_  = iTimeSigmaHPD;
   timeSigmaSiPM_ = iTimeSigmaSiPM;
+
   activeBXs_     = iActiveBXs;
-  nMaxIters_     = iNMaxIters;
-  nMaxItersNNLS_ = iNMaxIters;
+
+  nMaxItersMin_  = iNMaxItersMin;
+  nMaxItersNNLS_ = iNMaxItersNNLS;
+
+  deltaChiSqThresh_ = iDeltaChiSqThresh;
+  nnlsThresh_    = iNnlsThresh;
 
   BXOffset_ = -(*std::min_element(activeBXs_.begin(), activeBXs_.end()));
   BXSize_   = activeBXs_.size();
@@ -34,11 +39,19 @@ void DoMahiAlgo::phase1Apply(const HBHEChannelInfo& channelData,
 			     float& reconstructedEnergy,
 			     float& chi2) {
 
+  TSSize_ = channelData.nSamples();
+  TSOffset_ = channelData.soi();
+  FullTSOffset_ = FullTSofInterest_ - TSOffset_;
+
+  // 1 sigma time constraint
   if (channelData.hasTimeInfo()) dt_=timeSigmaSiPM_;
   else dt_=timeSigmaHPD_;
+
+  //FC to photo-electron scale factor (for P.E. uncertainties)
+  fcByPe_ = channelData.fcByPE();
   
   //Dark current value for this channel (SiPM only)
-  float darkCurrent =  psfPtr_->getSiPMDarkCurrent(channelData.darkCurrent(), 
+  float darkCurrent_ =  psfPtr_->getSiPMDarkCurrent(channelData.darkCurrent(), 
 						   channelData.fcByPE(),
 						   channelData.lambda());
 
@@ -48,15 +61,10 @@ void DoMahiAlgo::phase1Apply(const HBHEChannelInfo& channelData,
 			  channelData.tsPedestalWidth(2)*channelData.tsPedestalWidth(2)+
 			  channelData.tsPedestalWidth(3)*channelData.tsPedestalWidth(3) );
 
-  if (channelData.hasTimeInfo()) pedConstraint_+=darkCurrent*darkCurrent;
+  if (channelData.hasTimeInfo()) pedConstraint_+=darkCurrent_*darkCurrent_;
 
-  fcByPe_ = channelData.fcByPE();
 
-  std::vector<float> reconstructedVals;
-  SampleVector charges;
-  
-  double tsTOT = 0, tstrig = 0; // in fC
-
+  SampleVector charges;  
   for(unsigned int iTS=0; iTS<TSSize_; ++iTS){
     float charge = channelData.tsRawCharge(iTS);
     float ped = channelData.tsPedestal(iTS);
@@ -69,7 +77,7 @@ void DoMahiAlgo::phase1Apply(const HBHEChannelInfo& channelData,
     //Dark current (for SiPMs)
     float noiseDC=0;
     if((channelData.hasTimeInfo()) && (charge-ped)>channelData.tsPedestalWidth(iTS)) {
-      noiseDC = darkCurrent;
+      noiseDC = darkCurrent_;
     }
 
     //Electronic pedestal
@@ -78,26 +86,23 @@ void DoMahiAlgo::phase1Apply(const HBHEChannelInfo& channelData,
     //Total uncertainty from all sources
     noiseTerms_.coeffRef(iTS) = noiseADC*noiseADC + pedWidth*pedWidth + noiseDC*noiseDC;
 
-    tsTOT += charge - ped;
-    if( iTS==TSOffset_) {
-      tstrig += (charge - ped);
-    }
-
   }
 
   bool status =false;
-  if(tstrig >= 0) {
-    status = DoFit(charges,reconstructedVals); 
+  recoVals_.clear();
+
+  if(charges.coeffRef(TSOffset_)*channelData.tsGain(0) >= TS4Thresh_) {
+    status = DoFit(charges,recoVals_); 
   }
   
   if (!status) {
-    reconstructedVals.clear();
-    reconstructedVals.push_back(0.);
-    reconstructedVals.push_back(888.);
+    recoVals_.clear();
+    recoVals_.push_back(0.);
+    recoVals_.push_back(888.);
   }
 
-  reconstructedEnergy = reconstructedVals[0]*channelData.tsGain(0);
-  chi2 = reconstructedVals[1];
+  reconstructedEnergy = recoVals_[0]*channelData.tsGain(0);
+  chi2 = recoVals_[1];
 
 }
 
@@ -117,10 +122,8 @@ bool DoMahiAlgo::DoFit(SampleVector amplitudes, std::vector<float> &correctedOut
   nP_=0;
 
   bool status = true;
-
   int offset=0;
   for (unsigned int iBX=0; iBX<BXSize_; iBX++) {
-    
     offset=bxs_.coeff(iBX);
 
     pulseShapeArray_[iBX] = FullSampleVector::Zero(MaxFSVSize);
@@ -155,7 +158,7 @@ bool DoMahiAlgo::DoFit(SampleVector amplitudes, std::vector<float> &correctedOut
   if (!status) return status;
 
   bool foundintime = false;
-  unsigned int ipulseintime = 4;
+  unsigned int ipulseintime = 100;
 
   for (unsigned int iBX=0; iBX<BXSize_; ++iBX) {
     if (bxs_.coeff(iBX)==0) {
@@ -177,7 +180,7 @@ bool DoMahiAlgo::Minimize() {
   bool status = false;
 
   while (true) {
-    if (iter>=nMaxIters_) {
+    if (iter>=nMaxItersMin_) {
       std::cout << "max number of iterations reached! " << std::endl;
       break;
     }
@@ -193,7 +196,7 @@ bool DoMahiAlgo::Minimize() {
     
     chiSq_ = newChiSq;
     
-    if (std::abs(deltaChiSq)<1e-3) break;
+    if (std::abs(deltaChiSq)<deltaChiSqThresh_) break;
 
     iter++;
     
@@ -212,23 +215,27 @@ bool DoMahiAlgo::UpdatePulseShape(double itQ, FullSampleVector &pulseShape, Full
   pulseP_.fill(0);
 
   const double xx[4]={t0, 1.0, 0.0, 3};
-  (*pfunctor_)(&xx[0]);
-
-  psfPtr_->getPulseShape(pulseN_);
-
   const double xxm[4]={t0-dt_, 1.0, 0.0, 3};
   const double xxp[4]={t0+dt_, 1.0, 0.0, 3};
 
+  // Nominal pulse shape
+  (*pfunctor_)(&xx[0]);
+  psfPtr_->getPulseShape(pulseN_);
+
+  // pulse shape shifted by Minus dt_
   (*pfunctor_)(&xxm[0]);
   psfPtr_->getPulseShape(pulseM_);
 
+  // pulse shape shifted by Plus dt_
   (*pfunctor_)(&xxp[0]);
   psfPtr_->getPulseShape(pulseP_);
 
   for (unsigned int iTS=FullTSOffset_; iTS<FullTSOffset_ + TSSize_; iTS++) {
     pulseShape.coeffRef(iTS) = pulseN_[iTS-FullTSOffset_];
+
     pulseM_[iTS-FullTSOffset_]-=pulseN_[iTS-FullTSOffset_];
     pulseP_[iTS-FullTSOffset_]-=pulseN_[iTS-FullTSOffset_];
+
   }
 
   for (unsigned int iTS=FullTSOffset_; iTS<FullTSOffset_+TSSize_; iTS++) {
@@ -285,7 +292,7 @@ bool DoMahiAlgo::NNLS() {
   int iter = 0;
   Index idxwmax = 0;
   double wmax = 0.0;
-  double threshold = 1e-11;
+  double threshold = nnlsThresh_;
 
   while (true) {    
     if (iter>0 || nP_==0) {
@@ -397,7 +404,7 @@ void DoMahiAlgo::setPulseShapeTemplate(const HcalPulseShapes::Shape& ps) {
 }
 
 void DoMahiAlgo::resetPulseShapeTemplate(const HcalPulseShapes::Shape& ps) { 
-  ++ cntsetPulseShape;
+  ++ cntsetPulseShape_;
   psfPtr_.reset(new FitterFuncs::PulseShapeFunctor(ps,false,false,false,false,1,0,2.5,0,0.00065,1,TSSize_));
   pfunctor_    = std::unique_ptr<ROOT::Math::Functor>( new ROOT::Math::Functor(psfPtr_.get(),&FitterFuncs::PulseShapeFunctor::singlePulseShapeFunc, 3) );
 

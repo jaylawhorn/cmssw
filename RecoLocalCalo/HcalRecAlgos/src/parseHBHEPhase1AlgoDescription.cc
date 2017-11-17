@@ -13,22 +13,25 @@ static std::unique_ptr<DoMahiAlgo>
 parseHBHEMahiDescription(const edm::ParameterSet& conf)
 {
 
-  const bool iApplyTimeSlew      = conf.getParameter<bool> ("applyTimeSlew");
+  const double iTS4Thresh     = conf.getParameter<double> ("ts4Thresh");
+  const bool iApplyTimeSlew   = conf.getParameter<bool>   ("applyTimeSlew");
 
   const double iMeanTime      = conf.getParameter<double> ("meanTime");
   const double iTimeSigmaHPD  = conf.getParameter<double> ("timeSigmaHPD");
   const double iTimeSigmaSiPM = conf.getParameter<double> ("timeSigmaSiPM");
 
-  const std::vector<int> iActiveBXs     = conf.getParameter<std::vector<int>> ("activeBXs");
-  const int iNMaxIters        = conf.getParameter<int> ("nMaxIters");
+  const std::vector<int> iActiveBXs  = conf.getParameter<std::vector<int>> ("activeBXs");
+  const int iNMaxItersMin     = conf.getParameter<int>    ("nMaxItersMin");
+  const int iNMaxItersNNLS    = conf.getParameter<int>    ("nMaxItersNNLS");
+  const double iDeltaChiSqThresh = conf.getParameter<double> ("deltaChiSqThresh");
+  const double iNnlsThresh    = conf.getParameter<double> ("nnlsThresh");
 
   std::unique_ptr<DoMahiAlgo> corr = std::make_unique<DoMahiAlgo>();
 
-
-
-  corr->setParameters(iApplyTimeSlew, HcalTimeSlew::Medium,
+  corr->setParameters(iTS4Thresh, iApplyTimeSlew, HcalTimeSlew::Medium,
 		      iMeanTime, iTimeSigmaHPD, iTimeSigmaSiPM,
-		      iActiveBXs, iNMaxIters);
+		      iActiveBXs, iNMaxItersMin, iNMaxItersNNLS,
+		      iDeltaChiSqThresh, iNnlsThresh);
 
   return corr;
 }

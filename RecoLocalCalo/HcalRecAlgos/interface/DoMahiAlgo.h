@@ -22,10 +22,11 @@ class DoMahiAlgo
 
   void phase1Apply(const HBHEChannelInfo& channelData, float& reconstructedEnergy, float& chi2);  
   bool DoFit(SampleVector amplitudes, std::vector<float> &correctedOutput);
-
-  void setParameters(bool iApplyTimeSlew, HcalTimeSlew::BiasSetting slewFlavor,
-		     double iMeanTime, double iTimeSigmaHPD, double iTimeSigmaSiPM, 
-		     const std::vector <int> &iActiveBXs, int iNMaxIters);
+  
+  void setParameters(double iTS4Thresh, bool iApplyTimeSlew, HcalTimeSlew::BiasSetting slewFlavor,
+		     double iMeanTime, double iTimeSigmaHPD, double iTimeSigmaSiPM,
+		     const std::vector <int> &iActiveBXs, int iNMaxItersMin, int iNMaxItersNNLS,
+		     double iDeltaChiSqThresh, double iNnlsThresh);
 
   void setPulseShapeTemplate  (const HcalPulseShapes::Shape& ps);
   void resetPulseShapeTemplate(const HcalPulseShapes::Shape& ps);
@@ -35,47 +36,59 @@ class DoMahiAlgo
 
  private:
 
-  bool applyTimeSlew_;
-
-  float fcByPe_;
-  float meanTime_;
-  float timeSigmaHPD_;
-  float timeSigmaSiPM_;
-  float dt_;
-
-  int nMaxIters_;
-  int nMaxItersNNLS_;
-  std::vector <int> activeBXs_;
-
-  HcalTimeSlew::BiasSetting slewFlavor_;
-  //for pulse shapes
-  int cntsetPulseShape;
-
-  unsigned int BXSize_;
-  int BXOffset_;
-
-  const unsigned int TSSize_;
-  const unsigned int TSOffset_;
-
-  const unsigned int FullTSSize_;
-  const unsigned int FullTSofInterest_;
-  const unsigned int FullTSOffset_;
-
-  //holds active bunch crossings
-  BXVector bxs_;
-
-  BXVector bxsMin_;
-  unsigned int nP_;
-  float chiSq_;
-
-  std::unique_ptr<FitterFuncs::PulseShapeFunctor> psfPtr_;
-  std::unique_ptr<ROOT::Math::Functor> pfunctor_;
-
   bool Minimize();
   bool UpdateCov();
   bool UpdatePulseShape(double itQ, FullSampleVector &pulseShape, FullSampleMatrix &pulseCov);
   float CalculateChiSq();
   bool NNLS();
+
+  //hard coded in initializer
+  const unsigned int FullTSSize_;
+  const unsigned int FullTSofInterest_;
+
+  // Python-configurables
+  float TS4Thresh_; //0
+
+  bool applyTimeSlew_; //true
+  HcalTimeSlew::BiasSetting slewFlavor_; //medium
+
+  float meanTime_; // 0
+  float timeSigmaHPD_; // 5.0
+  float timeSigmaSiPM_; //2.5
+
+  std::vector <int> activeBXs_;
+
+  int nMaxItersMin_; //500 
+  int nMaxItersNNLS_; //500
+
+  float deltaChiSqThresh_; //1e-3
+  float nnlsThresh_; //1e-11
+
+  unsigned int BXSize_;
+  int BXOffset_;
+
+  //from channelData
+  float dt_;
+  float darkCurrent_;
+  float fcByPe_;
+
+  unsigned int TSSize_;
+  unsigned int TSOffset_;
+
+  unsigned int FullTSOffset_;
+
+  //holds active bunch crossings
+  BXVector bxs_;
+  BXVector bxsMin_;
+  unsigned int nP_;
+  float chiSq_;
+
+  //for pulse shapes
+  int cntsetPulseShape_;
+  std::unique_ptr<FitterFuncs::PulseShapeFunctor> psfPtr_;
+  std::unique_ptr<ROOT::Math::Functor> pfunctor_;
+
+  std::vector<float> recoVals_;
 
   //holds data samples
   SampleVector amplitudes_;
@@ -90,7 +103,6 @@ class DoMahiAlgo
   //holds corrections per pulse for TS4->whole pulse charge
   float fullPulseCorr_;
   
-  //std::unordered_map<int, int> mapBXs;
   //holds full covariance matrix for a pulse shape 
   //varied in time
   std::array<FullSampleMatrix, MaxPVSize> pulseCovArray_;

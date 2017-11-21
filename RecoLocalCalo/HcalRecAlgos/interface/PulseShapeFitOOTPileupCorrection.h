@@ -18,7 +18,6 @@
 
 #include "RecoLocalCalo/HcalRecAlgos/src/HybridMinimizer.h"
 
-
 class PulseShapeFitOOTPileupCorrection
 {
 public:

@@ -21,6 +21,11 @@ class DoMahiAlgo
   void phase1Apply(const HBHEChannelInfo& channelData, float& reconstructedEnergy, float& reconstructedTime, float& chi2);  
   bool DoFit(SampleVector amplitudes, std::vector<float> &correctedOutput, int nbx);
 
+  void setParameters(double iTS4Thresh, bool iApplyTimeSlew, HcalTimeSlew::BiasSetting slewFlavor,
+		     double iMeanTime, double iTimeSigmaHPD, double iTimeSigmaSiPM,
+		     const std::vector <int> &iActiveBXs, int iNMaxItersMin, int iNMaxItersNNLS,
+		     double iDeltaChiSqThresh, double iNnlsThresh);
+
   void setPulseShapeTemplate  (const HcalPulseShapes::Shape& ps);
   void resetPulseShapeTemplate(const HcalPulseShapes::Shape& ps);
 
@@ -31,16 +36,34 @@ class DoMahiAlgo
 
  private:
 
+  // Python-configurables
+  float TS4Thresh_; //0
+
+  bool applyTimeSlew_; //true
+  HcalTimeSlew::BiasSetting slewFlavor_; //medium
+
+  float meanTime_; // 0
+  float timeSigmaHPD_; // 5.0
+  float timeSigmaSiPM_; //2.5
+
+  std::vector <int> activeBXs_;
+
+  int nMaxItersMin_; //500 
+  int nMaxItersNNLS_; //500
+
+  float deltaChiSqThresh_; //1e-3
+  float nnlsThresh_; //1e-11
+
   int niterTot_;
 
   int doDebug;
   bool isHPD;
-  HcalTimeSlew::BiasSetting slewFlavor_;
+  //HcalTimeSlew::BiasSetting slewFlavor_;
 
   //for pulse shapes
   int cntsetPulseShape;
 
-  HcalDetId _detID;
+  //HcalDetId _detID;
   unsigned int _nPulseTot;
 
   //holds active bunch crossings

@@ -4,8 +4,10 @@
 
 void eigen_solve_submatrix(PulseMatrix& mat, PulseVector& invec, PulseVector& outvec, unsigned NP);
 
-DoMahiAlgo::DoMahiAlgo() { 
-}
+DoMahiAlgo::DoMahiAlgo() :
+  FullTSSize_(19),
+  FullTSofInterest_(8)
+{}
 
 void DoMahiAlgo::setParameters(double iTS4Thresh, bool iApplyTimeSlew, HcalTimeSlew::BiasSetting slewFlavor,
 			       double iMeanTime, double iTimeSigmaHPD, double iTimeSigmaSiPM,
@@ -29,8 +31,8 @@ void DoMahiAlgo::setParameters(double iTS4Thresh, bool iApplyTimeSlew, HcalTimeS
   deltaChiSqThresh_ = iDeltaChiSqThresh;
   nnlsThresh_    = iNnlsThresh;
 
-  //BXOffset_ = -(*std::min_element(activeBXs_.begin(), activeBXs_.end()));
-  //BXSize_   = activeBXs_.size();
+  BXOffset_ = -(*std::min_element(activeBXs_.begin(), activeBXs_.end()));
+  BXSize_   = activeBXs_.size();
 }
 
 
@@ -45,22 +47,33 @@ void DoMahiAlgo::phase1Apply(const HBHEChannelInfo& channelData,
 			     float& reconstructedTime,
 			     float& chi2) {
 
+  TSSize_ = channelData.nSamples();
+  TSOffset_ = channelData.soi();
+  FullTSOffset_ = FullTSofInterest_ - TSOffset_;
+
+  // 1 sigma time constraint
+  if (channelData.hasTimeInfo()) dt_=timeSigmaSiPM_;
+  else dt_=timeSigmaHPD_;
+
   niterTot_=0;
   
-  const unsigned cssize = channelData.nSamples();
+  //const unsigned cssize = channelData.nSamples();
   //_detID = channelData.id();
   
-  if (channelData.hasTimeInfo()) isHPD=false;
-  else isHPD=true;
+  //if (channelData.hasTimeInfo()) isHPD=false;
+  //else isHPD=true;
 
   //if (isHPD) {
   //slewFlavor_=HcalTimeSlew::Medium;
   //}
-  
+
+  //FC to photo-electron scale factor (for P.E. uncertainties)
+  fcByPe_ = channelData.fcByPE();
+
   //Dark current value for this channel (SiPM only)
-  double darkCurrent =  psfPtr_->getSiPMDarkCurrent(channelData.darkCurrent(), 
-						    channelData.fcByPE(),
-						    channelData.lambda());
+  darkCurrent_ =  psfPtr_->getSiPMDarkCurrent(channelData.darkCurrent(), 
+					      channelData.fcByPE(),
+					      channelData.lambda());
 
   //Average pedestal width (for covariance matrix constraint)
   _pedConstraint = 0.25*( channelData.tsPedestalWidth(0)*channelData.tsPedestalWidth(0)+
@@ -72,8 +85,8 @@ void DoMahiAlgo::phase1Apply(const HBHEChannelInfo& channelData,
   SampleVector charges;
   
   double tsTOT = 0, tstrig = 0; // in fC
-  for(unsigned int ip=0; ip<cssize; ++ip){
-    if( ip >= (unsigned)HcalConst::maxSamples) continue; 
+  for(unsigned int ip=0; ip<TSSize_; ++ip){
+    //if( ip >= (unsigned)HcalConst::maxSamples) continue; 
     double charge = channelData.tsRawCharge(ip);
     double ped = channelData.tsPedestal(ip);
 
@@ -85,7 +98,7 @@ void DoMahiAlgo::phase1Apply(const HBHEChannelInfo& channelData,
     //Dark current (for SiPMs)
     double noiseDC=0;
     if((!isHPD) && (charge-ped)>channelData.tsPedestalWidth(ip)) {
-      noiseDC = darkCurrent;
+      noiseDC = darkCurrent_;
     }
 
     //Photostatistics
@@ -243,7 +256,7 @@ bool DoMahiAlgo::DoFit(SampleVector amplitudes, std::vector<float> &correctedOut
 bool DoMahiAlgo::Minimize() {
 
   int iter = 0;
-  int maxIters = 500;
+  //int maxIters = 500;
   bool status = false;
 
   while (true) {
@@ -282,8 +295,8 @@ bool DoMahiAlgo::UpdatePulseShape(double itQ, FullSampleVector &pulseShape, Full
   //pulseCov = FullSampleMatrix::Constant(0);
   //pulseShape = PulseVector::Zero(12);
 
-  float dt=timeSigmaSiPM_;
-  if (isHPD) dt=timeSigmaHPD_;
+  //float dt=timeSigmaSiPM_;
+  //if (isHPD) dt=timeSigmaHPD_;
 
   float t0=meanTime_;
   //if (isHPD) {
@@ -301,11 +314,11 @@ bool DoMahiAlgo::UpdatePulseShape(double itQ, FullSampleVector &pulseShape, Full
   FullSampleVector pulseShapeM = FullSampleVector::Zero(12);
   FullSampleVector pulseShapeP = FullSampleVector::Zero(12);
 
-  const double xxm[4]={-dt+t0, 1.0, 0.0, 3};
-  const double xxp[4]={ dt+t0, 1.0, 0.0, 3};
+  const double xxm[4]={-dt_+t0, 1.0, 0.0, 3};
+  const double xxp[4]={ dt_+t0, 1.0, 0.0, 3};
 
   if (doDebug==1) {
-    std::cout << itQ << ", " << t0 << ", " << -dt+t0 << ", " << dt+t0 << std::endl;
+    std::cout << itQ << ", " << t0 << ", " << -dt_+t0 << ", " << dt_+t0 << std::endl;
   }
 
   (*pfunctor_)(&xxm[0]);

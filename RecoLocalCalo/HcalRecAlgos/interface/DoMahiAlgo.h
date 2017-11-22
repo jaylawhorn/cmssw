@@ -80,66 +80,65 @@ class DoMahiAlgo
   int niterTot_;
 
   int doDebug;
-  bool isHPD;
+  //bool isHPD;
 
   //for pulse shapes
-  int cntsetPulseShape;
+  int cntsetPulseShape_;
 
   //HcalDetId _detID;
-  unsigned int _nPulseTot;
+  unsigned int nPulseTot_;
 
   //holds active bunch crossings
-  BXVector _bxs;  
-  BXVector _bxsMin;
-  unsigned int _nP;
-  double _chiSq;
+  BXVector bxs_;  
+  BXVector bxsMin_;
+  unsigned int nP_;
+  double chiSq_;
 
   std::unique_ptr<FitterFuncs::PulseShapeFunctor> psfPtr_;
   std::unique_ptr<ROOT::Math::Functor> pfunctor_;
 
-
   //holds data samples
-  SampleVector _amplitudes;
+  SampleVector amplitudes_;
   //holds corrections per pulse for TS4->whole pulse charge
-  SampleVector _fullPulseCorrection;
+  SampleVector fullPulseCorrection_;
   //holds inverse covariance matrix
-  SampleMatrix _invCovMat;
+  SampleMatrix invCovMat_;
 
   //holds diagonal noise terms
-  SampleVector _noiseTerms;
+  SampleVector noiseTerms_;
   //holds constant pedestal constraint
-  double _pedConstraint;
+  double pedConstraint_;
   
   //holds full covariance matrix for a pulse shape 
   //varied in time
-  FullSampleMatrix pulseCov;
-  FullSampleMatrix pulseCovOOTM;
-  FullSampleMatrix pulseCovOOTP;
+  FullSampleMatrix pulseCov_;
+  FullSampleMatrix pulseCovOOTM_;
+  FullSampleMatrix pulseCovOOTP_;
 
   //holds full pulse shape template
-  FullSampleVector pulseShape;
-  FullSampleVector pulseShapeOOTM;
-  FullSampleVector pulseShapeOOTP;
+  FullSampleVector pulseShape_;
+  FullSampleVector pulseShapeOOTM_;
+  FullSampleVector pulseShapeOOTP_;
 
   //holds matrix of pulse shape templates for each BX
-  SamplePulseMatrix _pulseMat;
+  SamplePulseMatrix pulseMat_;
 
   //for FNNLS algorithm
-  PulseVector _ampVec;
-  PulseVector _ampVecMin;
-  PulseVector _errVec;
-  PulseVector ampvecpermtest;
+  PulseVector ampVec_;
+  PulseVector ampVecMin_;
+  PulseVector errVec_;
+  PulseVector ampvecpermtest_;
 
-  SamplePulseMatrix invcovp;
-  PulseMatrix aTaMat; // A-transpose A (matrix)
-  PulseVector aTbVec; // A-transpose b (vector)
-  PulseVector wVec; // w (vector)
-  PulseVector updateWork; // w (vector)
+  SamplePulseMatrix invcovp_;
+  PulseMatrix aTaMat_; // A-transpose A (matrix)
+  PulseVector aTbVec_; // A-transpose b (vector)
+  PulseVector wVec_; // w (vector)
+  PulseVector updateWork_; // w (vector)
 
-  SampleDecompLLT _covDecomp;
-  SampleMatrix _covDecompLinv;
-  PulseMatrix _topleft_work;
-  PulseDecompLDLT _pulseDecomp;
+  SampleDecompLLT covDecomp_;
+  SampleMatrix covDecompLinv_;
+  PulseMatrix topleft_work_;
+  PulseDecompLDLT pulseDecomp_;
 
 }; 
 #endif

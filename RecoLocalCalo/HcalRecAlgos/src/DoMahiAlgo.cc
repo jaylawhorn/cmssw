@@ -57,17 +57,7 @@ void DoMahiAlgo::phase1Apply(const HBHEChannelInfo& channelData,
 
   niterTot_=0;
   
-  //const unsigned cssize = channelData.nSamples();
-  //_detID = channelData.id();
-  
-  //if (channelData.hasTimeInfo()) isHPD=false;
-  //else isHPD=true;
-
-  //if (isHPD) {
-  //slewFlavor_=HcalTimeSlew::Medium;
-  //}
-
-  //FC to photo-electron scale factor (for P.E. uncertainties)
+  //fC to photo-electron scale factor (for P.E. uncertainties)
   fcByPe_ = channelData.fcByPE();
 
   //Dark current value for this channel (SiPM only)
@@ -88,7 +78,6 @@ void DoMahiAlgo::phase1Apply(const HBHEChannelInfo& channelData,
   
   double tsTOT = 0, tstrig = 0; // in fC
   for(unsigned int iTS=0; iTS<TSSize_; ++iTS){
-    //if( ip >= (unsigned)HcalConst::maxSamples) continue; 
     double charge = channelData.tsRawCharge(iTS);
     double ped = channelData.tsPedestal(iTS);
 
@@ -99,7 +88,6 @@ void DoMahiAlgo::phase1Apply(const HBHEChannelInfo& channelData,
 
     //Dark current (for SiPMs)
     double noiseDC=0;
-    //if((!isHPD) && (charge-ped)>channelData.tsPedestalWidth(iTS)) {
     if(channelData.hasTimeInfo() && (charge-ped)>channelData.tsPedestalWidth(iTS)) {
       noiseDC = darkCurrent_;
     }
@@ -117,7 +105,6 @@ void DoMahiAlgo::phase1Apply(const HBHEChannelInfo& channelData,
     noiseTerms_.coeffRef(iTS) = noiseADC*noiseADC + noiseDC*noiseDC + noisePhoto*noisePhoto + pedWidth*pedWidth;
 
     tsTOT += charge - ped;
-    //if( iTS==TSOffset_ || iTS==TSOffset_+1 ){
     if( iTS==TSOffset_ ){
       tstrig += (charge - ped);//*channelData.tsGain(4);
     }
@@ -304,19 +291,16 @@ bool DoMahiAlgo::UpdatePulseShape(double itQ, FullSampleVector &pulseShape, Full
 
   for (unsigned int iTS=FullTSOffset_; iTS<FullTSOffset_ + TSSize_; iTS++) {
     pulseShape.coeffRef(iTS) = pulseN_[iTS-FullTSOffset_];
+
+    pulseM_[iTS-FullTSOffset_] -= pulseN_[iTS-FullTSOffset_];
+    pulseP_[iTS-FullTSOffset_] -= pulseN_[iTS-FullTSOffset_];
   }
 
   for (unsigned int iTS=FullTSOffset_; iTS<FullTSOffset_+TSSize_; iTS++) {
     for (unsigned int jTS=FullTSOffset_; jTS<iTS+1; jTS++) {
       
-      double tmp=0.5*( (pulseP_[iTS-FullTSOffset_]-pulseN_[iTS-FullTSOffset_])*
-		       (pulseP_[jTS-FullTSOffset_]-pulseN_[jTS-FullTSOffset_]) +
-		       (pulseM_[iTS-FullTSOffset_]-pulseN_[iTS-FullTSOffset_])*
-		       (pulseM_[jTS-FullTSOffset_]-pulseN_[jTS-FullTSOffset_]) );
-      
-      
-      //double tmp=0.5*((pulseShapeP.coeff(i)-pulseShape.coeff(i))*(pulseShapeP.coeff(j)-pulseShape.coeff(j))
-      //		      + (pulseShapeM.coeff(i)-pulseShape.coeff(i))*(pulseShapeM.coeff(j)-pulseShape.coeff(j)));
+      double tmp=0.5*( pulseP_[iTS-FullTSOffset_]*pulseP_[jTS-FullTSOffset_] +
+		       pulseM_[iTS-FullTSOffset_]*pulseM_[jTS-FullTSOffset_] );
       
       pulseCov(iTS,jTS) += tmp;
       pulseCov(jTS,iTS) += tmp;
@@ -331,9 +315,9 @@ bool DoMahiAlgo::UpdatePulseShape(double itQ, FullSampleVector &pulseShape, Full
 
 bool DoMahiAlgo::UpdateCov() {
   if (doDebug==1) std::cout << "UpdateCov" << std::endl;
-
+  
   bool status=true;
-
+  
   invCovMat_ = noiseTerms_.asDiagonal();
   invCovMat_ +=SampleMatrix::Constant(pedConstraint_);
 
@@ -355,8 +339,7 @@ bool DoMahiAlgo::UpdateCov() {
       invCovMat_ += ampVec_.coeff(iBX)*ampVec_.coeff(iBX)
 	*pulseCovOOTP_.block(FullTSOffset_ - offset, FullTSOffset_-offset, TSSize_, TSSize_);
     }
-
-
+  }
   
   //std::cout << std::endl;
   if (doDebug==1) {
@@ -385,8 +368,6 @@ bool DoMahiAlgo::NNLS() {
   }
   else if (npulse==3) {
     for (unsigned int i=0; i<3; i++) {
-      //pulseMat_.col(i) = pulseShape_.segment(FullTSOffset_ + bxs_.coeff(i), TSSize_);
-
       if (bxs_.coeff(i)==0) 
 	pulseMat_.col(i) = pulseShape_.segment(FullTSOffset_ + bxs_.coeff(i), TSSize_);
       else if (bxs_.coeff(i)==1) 
@@ -452,7 +433,7 @@ bool DoMahiAlgo::NNLS() {
       if (nP_==0) break;     
 
       ampvecpermtest_ = ampVec_;
-
+      
       eigen_solve_submatrix(aTaMat_,aTbVec_,ampvecpermtest_,nP_);
 
       //check solution    
@@ -467,7 +448,7 @@ bool DoMahiAlgo::NNLS() {
 
       //update parameter vector
       Index minratioidx=0;
-
+      
       // no realizable optimization here (because it autovectorizes!)
       double minratio = std::numeric_limits<double>::max();
       for (unsigned int ipulse=0; ipulse<nP_; ++ipulse) {
@@ -508,7 +489,7 @@ bool DoMahiAlgo::NNLS() {
   
 
   niterTot_+=1000*iter;
-
+  
   return true;
 }
 

@@ -120,6 +120,11 @@ class DoMahiAlgo
   FullSampleVector pulseShapeOOTM_;
   FullSampleVector pulseShapeOOTP_;
 
+  //holders for calculating pulse shape & covariance matrices
+  std::array<double, HcalConst::maxSamples> pulseN_;
+  std::array<double, HcalConst::maxSamples> pulseM_;
+  std::array<double, HcalConst::maxSamples> pulseP_;
+
   //holds matrix of pulse shape templates for each BX
   SamplePulseMatrix pulseMat_;
 

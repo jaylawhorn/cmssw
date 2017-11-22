@@ -58,11 +58,8 @@ namespace FitterFuncs{
      double doublePulseShapeFunc( const double *x );
      double triplePulseShapeFunc( const double *x );
 
-     double getPulseShape(int i) { 
-       if (i>=0 && i<HcalConst::maxSamples)
-	 return pulse_shape_[i]; 
-       else
-	 return 0;
+     void getPulseShape(std::array<double,HcalConst::maxSamples>& fillPulseShape) { 
+       fillPulseShape = pulse_shape_;
      }
      
    private:

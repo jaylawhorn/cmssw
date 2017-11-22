@@ -163,19 +163,6 @@ bool DoMahiAlgo::DoFit(SampleVector amplitudes, std::vector<float> &correctedOut
   //ECAL does it better -- to be fixed
   // https://github.com/cms-sw/cmssw/blob/CMSSW_8_1_X/RecoLocalCalo/EcalRecProducers/plugins/EcalUncalibRecHitWorkerMultiFit.cc#L151-L171
   
-  //if (nbx==3) {
-  //  bxs_.resize(3);
-  //  bxs_ << -1,0,1;
-  //}
-  //else {
-  //  bxs_.resize(1);
-  //  bxs_ << 0;
-  //}
-
-  //nPulseTot_ = bxs_.rows();  
-
-  //amplitudes_ = amplitudes;
-
   pulseMat_.resize(Eigen::NoChange,BXSize_);
   ampVec_ = PulseVector::Zero(BXSize_);
   errVec_ = PulseVector::Zero(BXSize_);
@@ -308,28 +295,12 @@ bool DoMahiAlgo::UpdatePulseShape(double itQ, FullSampleVector &pulseShape, Full
 
   (*pfunctor_)(&xx[0]);
   psfPtr_->getPulseShape(pulseN_);
-  //for (int i=-1; i<11; i++) {
-  //pulseShape.coeffRef(i+1) = psfPtr_->getPulseShape(i);
-  //}
-
-  //FullSampleVector pulseShapeM = FullSampleVector::Zero(FullTSSize_);
-  //FullSampleVector pulseShapeP = FullSampleVector::Zero(FullTSSize_);
-
-  //if (doDebug==1) {
-  //std::cout << itQ << ", " << t0 << ", " << -dt_+t0 << ", " << dt_+t0 << std::endl;
-  //}
 
   (*pfunctor_)(&xxm[0]);
   psfPtr_->getPulseShape(pulseM_);
-  //for (int i=-1; i<11; i++) {
-  //pulseShapeM.coeffRef(i+1) = psfPtr_->getPulseShape(i);
-  //}
   
   (*pfunctor_)(&xxp[0]);
   psfPtr_->getPulseShape(pulseP_);
-  //for (int i=-1; i<11; i++) {
-  //pulseShapeP.coeffRef(i+1) = psfPtr_->getPulseShape(i);
-  //}
 
   for (unsigned int iTS=FullTSOffset_; iTS<FullTSOffset_ + TSSize_; iTS++) {
     pulseShape.coeffRef(iTS) = pulseN_[iTS-FullTSOffset_];
@@ -366,8 +337,6 @@ bool DoMahiAlgo::UpdateCov() {
   invCovMat_ = noiseTerms_.asDiagonal();
   invCovMat_ +=SampleMatrix::Constant(pedConstraint_);
 
-  //SampleMatrix tempInvCov = SampleMatrix::Constant(0);
-
   for (unsigned int iBX=0; iBX<BXSize_; iBX++) {
     if (ampVec_.coeff(iBX)==0) continue;
 
@@ -388,25 +357,6 @@ bool DoMahiAlgo::UpdateCov() {
     }
 
 
-    //invCovMat_ += ampVec_.coeff(iBX)*ampVec_.coeff(iBX)
-    //*pulseCovArray_.at(offset+BXOffset_).block(FullTSOffset_-offset, FullTSOffset_-offset, TSSize_, TSSize_);
-    //invCovMat_ += ampVec_.coeff(iBX)*fcByPe_*SampleMatrix::Ones();
-
-  }
-
-  //for (int k=0; k< ampVec_.size(); k++) {
-  //  if (ampVec_.coeff(k)==0) continue;
-  //  
-  //  if (int(bxs_.coeff(k)) == 0) {
-  //    tempInvCov += ampVec_.coeff(k)*ampVec_.coeff(k)*pulseCov_.block(1-int(bxs_.coeff(k)), 1-int(bxs_.coeff(k)),HcalConst::maxSamples,HcalConst::maxSamples);
-  //  } else if (int(bxs_.coeff(k)) == -1) {
-  //    tempInvCov += ampVec_.coeff(k)*ampVec_.coeff(k)*pulseCovOOTM_.block(1-int(bxs_.coeff(k)), 1-int(bxs_.coeff(k)),HcalConst::maxSamples,HcalConst::maxSamples);
-  //  } else if (int(bxs_.coeff(k)) == 1) {
-  //    tempInvCov += ampVec_.coeff(k)*ampVec_.coeff(k)*pulseCovOOTP_.block(1-int(bxs_.coeff(k)), 1-int(bxs_.coeff(k)),HcalConst::maxSamples,HcalConst::maxSamples);
-  //  }
-  //}
-  
-  //invCovMat_+=tempInvCov;  
   
   //std::cout << std::endl;
   if (doDebug==1) {
@@ -430,17 +380,20 @@ bool DoMahiAlgo::NNLS() {
     std::cout << ampVec_ << std::endl;
   }
 
-  //for (uint i=0; i<npulse; i++) {
-  //  pulseMat_.col(i) = pulseShape_.segment<HcalConst::maxSamples>(1-int(bxs_.coeff(i)));
-  //}
-
   if (npulse==1) {
     pulseMat_.col(bxs_.coeff(0)+BXOffset_) = pulseShape_.segment(FullTSOffset_ + bxs_.coeff(0), TSSize_);
   }
   else if (npulse==3) {
-    pulseMat_.col(bxs_.coeff(1)+BXOffset_) = pulseShape_.segment(FullTSOffset_ + bxs_.coeff(1), TSSize_);
-    pulseMat_.col(bxs_.coeff(0)+BXOffset_) = pulseShapeOOTM_.segment(FullTSOffset_ + bxs_.coeff(0), TSSize_);
-    pulseMat_.col(bxs_.coeff(2)+BXOffset_) = pulseShapeOOTP_.segment(FullTSOffset_ + bxs_.coeff(2), TSSize_);
+    for (unsigned int i=0; i<3; i++) {
+      //pulseMat_.col(i) = pulseShape_.segment(FullTSOffset_ + bxs_.coeff(i), TSSize_);
+
+      if (bxs_.coeff(i)==0) 
+	pulseMat_.col(i) = pulseShape_.segment(FullTSOffset_ + bxs_.coeff(i), TSSize_);
+      else if (bxs_.coeff(i)==1) 
+	pulseMat_.col(i) = pulseShapeOOTP_.segment(FullTSOffset_ + bxs_.coeff(i), TSSize_);
+      else if (bxs_.coeff(i)==-1) 
+	pulseMat_.col(i) = pulseShapeOOTM_.segment(FullTSOffset_ + bxs_.coeff(i), TSSize_);
+    }
   }
 
   //if (doDebug==1) {

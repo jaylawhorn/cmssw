@@ -7,6 +7,33 @@ void eigen_solve_submatrix(PulseMatrix& mat, PulseVector& invec, PulseVector& ou
 DoMahiAlgo::DoMahiAlgo() { 
 }
 
+void DoMahiAlgo::setParameters(double iTS4Thresh, bool iApplyTimeSlew, HcalTimeSlew::BiasSetting slewFlavor,
+			       double iMeanTime, double iTimeSigmaHPD, double iTimeSigmaSiPM,
+			       const std::vector <int> &iActiveBXs, int iNMaxItersMin, int iNMaxItersNNLS,
+			       double iDeltaChiSqThresh, double iNnlsThresh) {
+
+  TS4Thresh_     = iTS4Thresh;
+
+  applyTimeSlew_ = iApplyTimeSlew;
+  slewFlavor_    = slewFlavor;
+
+  meanTime_      = iMeanTime;
+  timeSigmaHPD_  = iTimeSigmaHPD;
+  timeSigmaSiPM_ = iTimeSigmaSiPM;
+
+  activeBXs_     = iActiveBXs;
+
+  nMaxItersMin_  = iNMaxItersMin;
+  nMaxItersNNLS_ = iNMaxItersNNLS;
+
+  deltaChiSqThresh_ = iDeltaChiSqThresh;
+  nnlsThresh_    = iNnlsThresh;
+
+  //BXOffset_ = -(*std::min_element(activeBXs_.begin(), activeBXs_.end()));
+  //BXSize_   = activeBXs_.size();
+}
+
+
 void DoMahiAlgo::setDebug(int val) {
   doDebug=val;
   if (doDebug== 1) std::cout << "print debugging info" << std::endl;
@@ -21,13 +48,13 @@ void DoMahiAlgo::phase1Apply(const HBHEChannelInfo& channelData,
   niterTot_=0;
   
   const unsigned cssize = channelData.nSamples();
-  _detID = channelData.id();
+  //_detID = channelData.id();
   
   if (channelData.hasTimeInfo()) isHPD=false;
   else isHPD=true;
 
   //if (isHPD) {
-  slewFlavor_=HcalTimeSlew::Medium;
+  //slewFlavor_=HcalTimeSlew::Medium;
   //}
   
   //Dark current value for this channel (SiPM only)
@@ -85,7 +112,7 @@ void DoMahiAlgo::phase1Apply(const HBHEChannelInfo& channelData,
   }
 
   bool status =false;
-  if(tstrig >= 0) {
+  if(tstrig >= TS4Thresh_) {
     if (doDebug==1) std::cout << "three pulse fit " << std::endl;
     
     status = DoFit(charges,reconstructedVals,3); 
@@ -220,7 +247,7 @@ bool DoMahiAlgo::Minimize() {
   bool status = false;
 
   while (true) {
-    if (iter>=maxIters) {
+    if (iter>=nMaxItersMin_) {
       std::cout << "max number of iterations reached! " << std::endl;
       break;
     }
@@ -238,7 +265,7 @@ bool DoMahiAlgo::Minimize() {
     
     if (doDebug==1) std::cout << "chiSq = " << _chiSq << ", " << deltaChiSq << std::endl;
     
-    if (std::abs(deltaChiSq)<1e-3) break;
+    if (std::abs(deltaChiSq)<deltaChiSqThresh_) break;
     
     iter++;
     
@@ -255,12 +282,13 @@ bool DoMahiAlgo::UpdatePulseShape(double itQ, FullSampleVector &pulseShape, Full
   //pulseCov = FullSampleMatrix::Constant(0);
   //pulseShape = PulseVector::Zero(12);
 
-  float dt=2.5;
-  if (isHPD) dt=5.0;
+  float dt=timeSigmaSiPM_;
+  if (isHPD) dt=timeSigmaHPD_;
 
-  float t0=0.0;
+  float t0=meanTime_;
   //if (isHPD) {
-  t0=HcalTimeSlew::delay(std::max(1.0, itQ), slewFlavor_);
+  if (applyTimeSlew_) 
+    t0=HcalTimeSlew::delay(std::max(1.0, itQ), slewFlavor_);
   //}
 
   const double xx[4]={t0, 1.0, 0.0, 3};
@@ -371,7 +399,7 @@ bool DoMahiAlgo::NNLS() {
   int iter = 0;
   Index idxwmax = 0;
   double wmax = 0.0;
-  double threshold = 1e-11;
+  double threshold = nnlsThresh_;
   
   while (true) {    
     if (iter>0 || _nP==0) {
@@ -388,7 +416,7 @@ bool DoMahiAlgo::NNLS() {
 	break;
       }
       
-      if (iter>=500) {
+      if (iter>=nMaxItersNNLS_) {
 	std::cout << "Max Iterations reached!" << std::endl;
 	break;
       }

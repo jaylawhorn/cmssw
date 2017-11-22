@@ -36,6 +36,16 @@ class DoMahiAlgo
 
  private:
 
+  bool Minimize();
+  bool UpdateCov();
+  bool UpdatePulseShape(double itQ, FullSampleVector &pulseShape, FullSampleMatrix &pulseCov);
+  double CalculateChiSq();
+  bool NNLS();
+
+  //hard coded in initializer
+  const unsigned int FullTSSize_;
+  const unsigned int FullTSofInterest_;
+
   // Python-configurables
   float TS4Thresh_; //0
 
@@ -54,11 +64,23 @@ class DoMahiAlgo
   float deltaChiSqThresh_; //1e-3
   float nnlsThresh_; //1e-11
 
+  unsigned int BXSize_;
+  int BXOffset_;
+
+  //from channelData
+  float dt_;
+  float darkCurrent_;
+  float fcByPe_;
+
+  unsigned int TSSize_;
+  unsigned int TSOffset_;
+
+  unsigned int FullTSOffset_;
+
   int niterTot_;
 
   int doDebug;
   bool isHPD;
-  //HcalTimeSlew::BiasSetting slewFlavor_;
 
   //for pulse shapes
   int cntsetPulseShape;
@@ -68,7 +90,6 @@ class DoMahiAlgo
 
   //holds active bunch crossings
   BXVector _bxs;  
-
   BXVector _bxsMin;
   unsigned int _nP;
   double _chiSq;
@@ -76,11 +97,6 @@ class DoMahiAlgo
   std::unique_ptr<FitterFuncs::PulseShapeFunctor> psfPtr_;
   std::unique_ptr<ROOT::Math::Functor> pfunctor_;
 
-  bool Minimize();
-  bool UpdateCov();
-  bool UpdatePulseShape(double itQ, FullSampleVector &pulseShape, FullSampleMatrix &pulseCov);
-  double CalculateChiSq();
-  bool NNLS();
 
   //holds data samples
   SampleVector _amplitudes;

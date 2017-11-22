@@ -115,7 +115,8 @@ void DoMahiAlgo::phase1Apply(const HBHEChannelInfo& channelData,
     noiseTerms_.coeffRef(iTS) = noiseADC*noiseADC + noiseDC*noiseDC + noisePhoto*noisePhoto + pedWidth*pedWidth;
 
     tsTOT += charge - ped;
-    if( iTS==TSOffset_ || iTS==TSOffset_+1 ){
+    //if( iTS==TSOffset_ || iTS==TSOffset_+1 ){
+    if( iTS==TSOffset_ ){
       tstrig += (charge - ped);//*channelData.tsGain(4);
     }
   }

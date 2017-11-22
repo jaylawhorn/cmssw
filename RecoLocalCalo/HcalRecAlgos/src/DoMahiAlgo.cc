@@ -15,7 +15,10 @@ void DoMahiAlgo::setDebug(int val) {
 
 void DoMahiAlgo::phase1Apply(const HBHEChannelInfo& channelData,
 			     float& reconstructedEnergy,
+			     float& reconstructedTime,
 			     float& chi2) {
+
+  niterTot_=0;
   
   const unsigned cssize = channelData.nSamples();
   _detID = channelData.id();
@@ -97,6 +100,7 @@ void DoMahiAlgo::phase1Apply(const HBHEChannelInfo& channelData,
   }
   
   reconstructedEnergy = reconstructedVals[0]*channelData.tsGain(0);
+  reconstructedTime = niterTot_;
   chi2 = reconstructedVals[1];
 
 }
@@ -239,7 +243,9 @@ bool DoMahiAlgo::Minimize() {
     iter++;
     
   }
-  
+
+  niterTot_+=iter;
+
   return status;
 }
 
@@ -461,6 +467,9 @@ bool DoMahiAlgo::NNLS() {
     break;
   }
   
+
+  niterTot_+=1000*iter;
+
   return true;
 }
 

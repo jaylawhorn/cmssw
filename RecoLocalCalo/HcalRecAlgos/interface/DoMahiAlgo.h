@@ -18,7 +18,7 @@ class DoMahiAlgo
   DoMahiAlgo();
   ~DoMahiAlgo() { };
 
-  void phase1Apply(const HBHEChannelInfo& channelData, float& reconstructedEnergy, float& chi2);  
+  void phase1Apply(const HBHEChannelInfo& channelData, float& reconstructedEnergy, float& reconstructedTime, float& chi2);  
   bool DoFit(SampleVector amplitudes, std::vector<float> &correctedOutput, int nbx);
 
   void setPulseShapeTemplate  (const HcalPulseShapes::Shape& ps);
@@ -30,6 +30,8 @@ class DoMahiAlgo
   const HcalPulseShapes::Shape* currentPulseShape_=nullptr;
 
  private:
+
+  int niterTot_;
 
   int doDebug;
   bool isHPD;

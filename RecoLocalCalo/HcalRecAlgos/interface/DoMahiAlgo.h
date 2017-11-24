@@ -111,14 +111,10 @@ class DoMahiAlgo
   
   //holds full covariance matrix for a pulse shape 
   //varied in time
-  FullSampleMatrix pulseCov_;
-  FullSampleMatrix pulseCovOOTM_;
-  FullSampleMatrix pulseCovOOTP_;
+  std::array<FullSampleMatrix, MaxPVSize> pulseCovArray_;
 
   //holds full pulse shape template
-  FullSampleVector pulseShape_;
-  FullSampleVector pulseShapeOOTM_;
-  FullSampleVector pulseShapeOOTP_;
+  std::array<FullSampleVector, MaxPVSize> pulseShapeArray_;
 
   //holders for calculating pulse shape & covariance matrices
   std::array<double, HcalConst::maxSamples> pulseN_;

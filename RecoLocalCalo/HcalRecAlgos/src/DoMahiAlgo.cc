@@ -5,8 +5,8 @@
 void eigen_solve_submatrix(PulseMatrix& mat, PulseVector& invec, PulseVector& outvec, unsigned NP);
 
 DoMahiAlgo::DoMahiAlgo() :
-  FullTSSize_(12), //19
-  FullTSofInterest_(5) //8
+  FullTSSize_(19), //19
+  FullTSofInterest_(8) //8
 {}
 
 void DoMahiAlgo::setParameters(double iTS4Thresh, bool iApplyTimeSlew, HcalTimeSlew::BiasSetting slewFlavor,

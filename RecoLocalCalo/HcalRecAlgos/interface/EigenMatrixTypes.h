@@ -1,7 +1,7 @@
 #include <Eigen/Dense>
 
 constexpr int MaxSVSize=10;
-constexpr int MaxFSVSize=12;
+constexpr int MaxFSVSize=19;
 constexpr int MaxPVSize=10;
 
 typedef Eigen::Matrix<double,MaxSVSize,1> SampleVector;

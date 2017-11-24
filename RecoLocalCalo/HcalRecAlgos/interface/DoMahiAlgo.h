@@ -29,8 +29,6 @@ class DoMahiAlgo
   void setPulseShapeTemplate  (const HcalPulseShapes::Shape& ps);
   void resetPulseShapeTemplate(const HcalPulseShapes::Shape& ps);
 
-  void setDebug(int val);
-
   typedef BXVector::Index Index;
   const HcalPulseShapes::Shape* currentPulseShape_=nullptr;
 
@@ -79,14 +77,11 @@ class DoMahiAlgo
 
   int niterTot_;
 
-  int doDebug;
+  //int doDebug;
   //bool isHPD;
 
-  //for pulse shapes
-  int cntsetPulseShape_;
-
   //HcalDetId _detID;
-  unsigned int nPulseTot_;
+  //unsigned int nPulseTot_;
 
   //holds active bunch crossings
   BXVector bxs_;  
@@ -94,13 +89,13 @@ class DoMahiAlgo
   unsigned int nP_;
   double chiSq_;
 
+  //for pulse shapes
+  int cntsetPulseShape_;
   std::unique_ptr<FitterFuncs::PulseShapeFunctor> psfPtr_;
   std::unique_ptr<ROOT::Math::Functor> pfunctor_;
 
   //holds data samples
   SampleVector amplitudes_;
-  //holds corrections per pulse for TS4->whole pulse charge
-  SampleVector fullPulseCorrection_;
   //holds inverse covariance matrix
   SampleMatrix invCovMat_;
 

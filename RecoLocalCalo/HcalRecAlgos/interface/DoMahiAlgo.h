@@ -19,7 +19,7 @@ class DoMahiAlgo
   ~DoMahiAlgo() { };
 
   void phase1Apply(const HBHEChannelInfo& channelData, float& reconstructedEnergy, float& reconstructedTime, float& chi2);  
-  bool DoFit(SampleVector amplitudes, std::vector<float> &correctedOutput, int nbx);
+  bool DoFit(SampleVector amplitudes, std::vector<float> &correctedOutput);
 
   void setParameters(double iTS4Thresh, bool iApplyTimeSlew, HcalTimeSlew::BiasSetting slewFlavor,
 		     double iMeanTime, double iTimeSigmaHPD, double iTimeSigmaSiPM,
@@ -35,6 +35,7 @@ class DoMahiAlgo
  private:
 
   bool Minimize();
+  //bool OnePulseMinimize();
   bool UpdateCov();
   bool UpdatePulseShape(double itQ, FullSampleVector &pulseShape, FullSampleMatrix &pulseCov);
   double CalculateChiSq();

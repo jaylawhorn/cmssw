@@ -40,13 +40,15 @@ void DoMahiAlgo::phase1Apply(const HBHEChannelInfo& channelData,
 			     float& reconstructedTime,
 			     float& chi2) {
 
+  std::cout << "/////" << std::endl;
+
   TSSize_ = channelData.nSamples();
   TSOffset_ = channelData.soi();
   FullTSOffset_ = FullTSofInterest_ - TSOffset_;
 
   // 1 sigma time constraint
   if (channelData.hasTimeInfo()) dt_=timeSigmaSiPM_;
-  else dt_=timeSigmaHPD_;
+  else dt_=timeSigmaHPD_*0.0;
 
   niterTot_=0;
   
@@ -59,12 +61,13 @@ void DoMahiAlgo::phase1Apply(const HBHEChannelInfo& channelData,
 					      channelData.lambda());
 
   //Average pedestal width (for covariance matrix constraint)
-  pedConstraint_ = 0.25*( channelData.tsPedestalWidth(0)*channelData.tsPedestalWidth(0)+
-			  channelData.tsPedestalWidth(1)*channelData.tsPedestalWidth(1)+
-			  channelData.tsPedestalWidth(2)*channelData.tsPedestalWidth(2)+
-			  channelData.tsPedestalWidth(3)*channelData.tsPedestalWidth(3) );
-
-  if (channelData.hasTimeInfo()) pedConstraint_+= darkCurrent_*darkCurrent_;
+  pedConstraint_ = 0;
+  //pedConstraint_ = 0.25*( channelData.tsPedestalWidth(0)*channelData.tsPedestalWidth(0)+
+  //			  channelData.tsPedestalWidth(1)*channelData.tsPedestalWidth(1)+
+  //			  channelData.tsPedestalWidth(2)*channelData.tsPedestalWidth(2)+
+  //			  channelData.tsPedestalWidth(3)*channelData.tsPedestalWidth(3) );
+  //
+  //if (channelData.hasTimeInfo()) pedConstraint_+= darkCurrent_*darkCurrent_;
 
   std::vector<float> reconstructedVals;
   SampleVector charges;
@@ -77,36 +80,35 @@ void DoMahiAlgo::phase1Apply(const HBHEChannelInfo& channelData,
     charges.coeffRef(iTS) = charge - ped;
 
     //ADC granularity
-    double noiseADC = (1./sqrt(12))*channelData.tsDFcPerADC(iTS);
+    //double noiseADC = (1./sqrt(12))*channelData.tsDFcPerADC(iTS);
 
     //Dark current (for SiPMs)
-    double noiseDC=0;
-    if(channelData.hasTimeInfo() && (charge-ped)>channelData.tsPedestalWidth(iTS)) {
-      noiseDC = darkCurrent_;
-    }
+    //double noiseDC=0;
+    //if(channelData.hasTimeInfo() && (charge-ped)>channelData.tsPedestalWidth(iTS)) {
+    //  noiseDC = darkCurrent_;
+    //}
 
     //Photostatistics
-    double noisePhoto = 0;
-    if ( (charge-ped)>channelData.tsPedestalWidth(iTS)) {
-      noisePhoto = sqrt((charge-ped)*channelData.fcByPE());
-    }
+    //double noisePhoto = 0;
+    //if ( (charge-ped)>channelData.tsPedestalWidth(iTS)) {
+    //  noisePhoto = sqrt((charge-ped)*channelData.fcByPE());
+    //}
 
     //Electronic pedestal
-    double pedWidth = channelData.tsPedestalWidth(iTS);
+    //double pedWidth = channelData.tsPedestalWidth(iTS);
 
     //Total uncertainty from all sources
-    noiseTerms_.coeffRef(iTS) = noiseADC*noiseADC + noiseDC*noiseDC + noisePhoto*noisePhoto + pedWidth*pedWidth;
-    //noiseTerms_.coeffRef(iTS) = noiseADC*noiseADC + noiseDC*noiseDC + pedWidth*pedWidth;
+    noiseTerms_.coeffRef(iTS) = 0;//noiseADC*noiseADC + noisePhoto*noisePhoto;// + noiseDC*noiseDC + pedWidth*pedWidth;
 
     tsTOT += charge - ped;
     if( iTS==TSOffset_ ){
-      tstrig += (charge - ped);//*channelData.tsGain(4);
+      tstrig += (charge - ped)*channelData.tsGain(0);
     }
   }
 
   bool status =false;
   if(tstrig >= TS4Thresh_) {
-    status = DoFit(charges,reconstructedVals,1); 
+    status = DoFit(charges,reconstructedVals);
   }
   
   if (!status) {
@@ -121,7 +123,7 @@ void DoMahiAlgo::phase1Apply(const HBHEChannelInfo& channelData,
 
 }
 
-bool DoMahiAlgo::DoFit(SampleVector amplitudes, std::vector<float> &correctedOutput, int nbx) {
+bool DoMahiAlgo::DoFit(SampleVector amplitudes, std::vector<float> &correctedOutput) {
 
   bxs_.resize(BXSize_);
   for (unsigned int iBX=0; iBX<BXSize_; iBX++) {
@@ -167,7 +169,6 @@ bool DoMahiAlgo::DoFit(SampleVector amplitudes, std::vector<float> &correctedOut
   aTbVec_.resize(BXSize_);
   wVec_.resize(BXSize_);
 
-
   status = Minimize(); 
   ampVecMin_ = ampVec_;
   bxsMin_ = bxs_;
@@ -198,6 +199,8 @@ bool DoMahiAlgo::Minimize() {
   int iter = 0;
   bool status = false;
 
+  std::cout << "initial: " << ampVec_.transpose() << std::endl;
+
   while (true) {
     if (iter>=nMaxItersMin_) {
       std::cout << "max number of iterations reached! " << std::endl;
@@ -206,22 +209,25 @@ bool DoMahiAlgo::Minimize() {
     
     status=UpdateCov();
     if (!status) break;
-    
+
     status = NNLS();
     if (!status) break;
     
     double newChiSq=CalculateChiSq();
     double deltaChiSq = newChiSq - chiSq_;
-    
+    //std::cout << chiSq_ << ", " << newChiSq << std::endl;
+
+    std::cout << deltaChiSq << ";; " << ampVec_.transpose() << std::endl;
+
     chiSq_ = newChiSq;
     
     if (std::abs(deltaChiSq)<deltaChiSqThresh_) break;
-    
     iter++;
     
   }
 
   niterTot_+=iter;
+  std::cout << "min iter: " << iter << std::endl;
 
   return status;
 }
@@ -356,14 +362,9 @@ bool DoMahiAlgo::NNLS() {
       
       eigen_solve_submatrix(aTaMat_,aTbVec_,ampvecpermtest_,nP_);
 
+      //std::cout << ampvecpermtest_.transpose() << std::endl;
+
       //check solution    
-      //auto ampvecpermhead = ampvecpermtest_.head(nP_);
-
-      //if ( ampvecpermhead.minCoeff()>0. ) {
-      //	ampVec_.head(nP_) = ampvecpermhead.head(nP_);
-      //	break;
-      //}
-
       bool positive = true;
       for (unsigned int i = 0; i < nP_; ++i)
         positive &= (ampvecpermtest_(i) > 0);
@@ -371,7 +372,7 @@ bool DoMahiAlgo::NNLS() {
         ampVec_.head(nP_) = ampvecpermtest_.head(nP_);
         break;
       } 
-
+      std::cout << "meep " << ampvecpermtest_.transpose() << std::endl;
       //update parameter vector
       Index minratioidx=0;
       
@@ -391,7 +392,9 @@ bool DoMahiAlgo::NNLS() {
       
       //avoid numerical problems with later ==0. check
       ampVec_.coeffRef(minratioidx) = 0.;
-      
+
+      std::cout << ampVec_.transpose() << std::endl;
+
       aTaMat_.col(nP_-1).swap(aTaMat_.col(minratioidx));
       aTaMat_.row(nP_-1).swap(aTaMat_.row(minratioidx));
       pulseMat_.col(nP_-1).swap(pulseMat_.col(minratioidx));
@@ -413,7 +416,7 @@ bool DoMahiAlgo::NNLS() {
     break;
   }
   
-
+  std::cout << "nnls iter: " << iter << std::endl;
   niterTot_+=1000*iter;
   
   return true;

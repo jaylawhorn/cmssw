@@ -35,6 +35,7 @@ class DoMahiAlgo
  private:
 
   bool Minimize();
+  bool OnePulseMinimize();
   bool UpdateCov();
   bool UpdatePulseShape(double itQ, FullSampleVector &pulseShape, FullSampleMatrix &pulseCov);
   double CalculateChiSq();

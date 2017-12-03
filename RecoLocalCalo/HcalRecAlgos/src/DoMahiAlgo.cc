@@ -198,6 +198,8 @@ bool DoMahiAlgo::Minimize() {
   int iter = 0;
   bool status = false;
 
+  double oldChiSq=chiSq_;
+
   while (true) {
     if (iter>=nMaxItersMin_) {
       std::cout << "max number of iterations reached! " << std::endl;
@@ -206,17 +208,29 @@ bool DoMahiAlgo::Minimize() {
     
     status=UpdateCov();
     if (!status) break;
-    
-    status = NNLS();
+
+    if (BXSize_>1) {
+      status = NNLS();
+    }
+    else {
+      status = OnePulseMinimize();
+    }
     if (!status) break;
     
     double newChiSq=CalculateChiSq();
     double deltaChiSq = newChiSq - chiSq_;
-    
+
+    //std::cout << newChiSq << ", " << chiSq_ << ", " << oldChiSq <<  std::endl;
+
+    if (newChiSq==oldChiSq && newChiSq<chiSq_) {
+      //std::cout << "endless loop recovery" << std::endl;
+      break;
+    }
+    oldChiSq=chiSq_;
     chiSq_ = newChiSq;
-    
+
     if (std::abs(deltaChiSq)<deltaChiSqThresh_) break;
-    
+
     iter++;
     
   }
@@ -419,6 +433,18 @@ bool DoMahiAlgo::NNLS() {
   return true;
 }
 
+bool DoMahiAlgo::OnePulseMinimize() {
+
+  invcovp_ = covDecomp_.matrixL().solve(pulseMat_);
+
+  SingleMatrix aTamatval = invcovp_.transpose()*invcovp_;
+  SingleVector aTbvecval = invcovp_.transpose()*covDecomp_.matrixL().solve(amplitudes_);
+
+  ampVec_.coeffRef(0) = std::max(0., aTbvecval.coeff(0)/aTamatval.coeff(0));
+
+  return true;
+
+}
 
 double DoMahiAlgo::CalculateChiSq() {
 

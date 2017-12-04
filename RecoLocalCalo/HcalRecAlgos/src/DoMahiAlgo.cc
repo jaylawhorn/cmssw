@@ -96,7 +96,7 @@ void DoMahiAlgo::phase1Apply(const HBHEChannelInfo& channelData,
 
     //Total uncertainty from all sources
     noiseTerms_.coeffRef(iTS) = noiseADC*noiseADC + noiseDC*noiseDC + noisePhoto*noisePhoto + pedWidth*pedWidth;
-    //noiseTerms_.coeffRef(iTS) = noiseADC*noiseADC + noiseDC*noiseDC + pedWidth*pedWidth;
+    //noiseTerms_.coeffRef(iTS) = noiseADC*noiseADC;// + noiseDC*noiseDC + pedWidth*pedWidth;
 
     tsTOT += charge - ped;
     if( iTS==TSOffset_ ){
@@ -202,7 +202,7 @@ bool DoMahiAlgo::Minimize() {
 
   while (true) {
     if (iter>=nMaxItersMin_) {
-      std::cout << "max number of iterations reached! " << std::endl;
+      //std::cout << "max number of iterations reached! " << std::endl;
       break;
     }
     
@@ -302,7 +302,7 @@ bool DoMahiAlgo::UpdateCov() {
     invCovMat_ += ampVec_.coeff(iBX)*ampVec_.coeff(iBX)
       *pulseCovArray_.at(offset+BXOffset_).block(FullTSOffset_-offset, FullTSOffset_-offset, TSSize_, TSSize_);
 
-    invCovMat_ += ampVec_.coeff(iBX)*fcByPe_*SampleMatrix::Ones();
+    //invCovMat_ += ampVec_.coeff(iBX)*fcByPe_*SampleMatrix::Ones();
   }
   
   covDecomp_.compute(invCovMat_);

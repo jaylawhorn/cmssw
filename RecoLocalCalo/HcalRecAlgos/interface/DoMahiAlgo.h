@@ -10,7 +10,9 @@
 
 #include "CalibCalorimetry/HcalAlgos/interface/HcalPulseShapes.h"
 #include "CalibCalorimetry/HcalAlgos/interface/HcalTimeSlew.h"
-#include "RecoLocalCalo/HcalRecAlgos/interface/PulseShapeFitOOTPileupCorrection.h"
+#include "RecoLocalCalo/HcalRecAlgos/interface/PulseShapeFunctor.h"
+
+#include "Math/Functor.h"
 
 class DoMahiAlgo
 {
@@ -19,15 +21,17 @@ class DoMahiAlgo
   ~DoMahiAlgo() { };
 
   void phase1Apply(const HBHEChannelInfo& channelData, float& reconstructedEnergy, float& reconstructedTime, float& chi2);  
-  bool DoFit(SampleVector amplitudes, std::vector<float> &correctedOutput, int nbx);
+  bool DoFit(SampleVector amplitudes, std::vector<float> &correctedOutput);
 
   void setParameters(double iTS4Thresh, bool iApplyTimeSlew, HcalTimeSlew::BiasSetting slewFlavor,
-		     double iMeanTime, double iTimeSigmaHPD, double iTimeSigmaSiPM,
+		     double iMeanTime, double iTimeSigmaHPD, double iTimeSigmaSiPM, //bool iUseConfigBXs,
 		     const std::vector <int> &iActiveBXs, int iNMaxItersMin, int iNMaxItersNNLS,
 		     double iDeltaChiSqThresh, double iNnlsThresh);
 
   void setPulseShapeTemplate  (const HcalPulseShapes::Shape& ps);
   void resetPulseShapeTemplate(const HcalPulseShapes::Shape& ps);
+
+  //void setBxSpacing(const unsigned int bxSpacing);
 
   typedef BXVector::Index Index;
   const HcalPulseShapes::Shape* currentPulseShape_=nullptr;
@@ -40,6 +44,8 @@ class DoMahiAlgo
   bool UpdatePulseShape(double itQ, FullSampleVector &pulseShape, FullSampleMatrix &pulseCov);
   double CalculateChiSq();
   bool NNLS();
+
+  double getSiPMDarkCurrent(double darkCurrent, double fcByPE, double lambda);
 
   //hard coded in initializer
   const unsigned int FullTSSize_;
@@ -55,7 +61,9 @@ class DoMahiAlgo
   float timeSigmaHPD_; // 5.0
   float timeSigmaSiPM_; //2.5
 
+  //bool useConfigBXs_;
   std::vector <int> activeBXs_;
+  //int bxSpacing_;
 
   int nMaxItersMin_; //500 
   int nMaxItersNNLS_; //500
@@ -65,6 +73,9 @@ class DoMahiAlgo
 
   unsigned int BXSize_;
   int BXOffset_;
+//  std::vector <int> activeBXs_;
+//  unsigned int BXSizeConf_;
+//  int BXOffsetConf_;
 
   //from channelData
   float dt_;
@@ -75,14 +86,6 @@ class DoMahiAlgo
   unsigned int TSOffset_;
 
   unsigned int FullTSOffset_;
-
-  int niterTot_;
-
-  //int doDebug;
-  //bool isHPD;
-
-  //HcalDetId _detID;
-  //unsigned int nPulseTot_;
 
   //holds active bunch crossings
   BXVector bxs_;  

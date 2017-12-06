@@ -1,4 +1,6 @@
+//#include "RecoLocalCalo/HcalRecAlgos/interface/PulseShapeFunctor.h"
 #include "RecoLocalCalo/HcalRecAlgos/interface/DoMahiAlgo.h" 
+#include "FWCore/MessageLogger/interface/MessageLogger.h"
 #include <iostream>
 #include <fstream> 
 
@@ -10,7 +12,7 @@ DoMahiAlgo::DoMahiAlgo() :
 {}
 
 void DoMahiAlgo::setParameters(double iTS4Thresh, bool iApplyTimeSlew, HcalTimeSlew::BiasSetting slewFlavor,
-			       double iMeanTime, double iTimeSigmaHPD, double iTimeSigmaSiPM,
+			       double iMeanTime, double iTimeSigmaHPD, double iTimeSigmaSiPM, //bool iUseConfigBXs,
 			       const std::vector <int> &iActiveBXs, int iNMaxItersMin, int iNMaxItersNNLS,
 			       double iDeltaChiSqThresh, double iNnlsThresh) {
 
@@ -23,7 +25,8 @@ void DoMahiAlgo::setParameters(double iTS4Thresh, bool iApplyTimeSlew, HcalTimeS
   timeSigmaHPD_  = iTimeSigmaHPD;
   timeSigmaSiPM_ = iTimeSigmaSiPM;
 
-  activeBXs_     = iActiveBXs;
+  //useConfigBXs_ = iUseConfigBXs;
+  activeBXs_ = iActiveBXs;
 
   nMaxItersMin_  = iNMaxItersMin;
   nMaxItersNNLS_ = iNMaxItersNNLS;
@@ -34,6 +37,32 @@ void DoMahiAlgo::setParameters(double iTS4Thresh, bool iApplyTimeSlew, HcalTimeS
   BXOffset_ = -(*std::min_element(activeBXs_.begin(), activeBXs_.end()));
   BXSize_   = activeBXs_.size();
 }
+
+/*void DoMahiAlgo::setBxSpacing(const unsigned int bxSpacing) {
+  if (!useConfigBXs_) {
+    if (bxSpacing==25) {
+      activeBXs_.clear();
+      activeBXs_.push_back(-1);
+      activeBXs_.push_back(0);
+      activeBXs_.push_back(1);
+      BXOffset_ = 1;
+      BXSize_ = 3;
+    }
+    else {
+      activeBXs_.clear();
+      activeBXs_.push_back(0);
+      BXOffset_ = 0;
+      BXSize_ = 1;
+    }
+  }
+  else {
+    activeBXs_.clear();
+    activeBXs_ = activeBXsConf_;
+    BXOffset_ = BXOffsetConf_;
+    BXSize_ = BXSizeConf_;
+  }
+
+  }*/
 
 void DoMahiAlgo::phase1Apply(const HBHEChannelInfo& channelData,
 			     float& reconstructedEnergy,
@@ -48,15 +77,13 @@ void DoMahiAlgo::phase1Apply(const HBHEChannelInfo& channelData,
   if (channelData.hasTimeInfo()) dt_=timeSigmaSiPM_;
   else dt_=timeSigmaHPD_;
 
-  niterTot_=0;
-  
   //fC to photo-electron scale factor (for P.E. uncertainties)
   fcByPe_ = channelData.fcByPE();
 
   //Dark current value for this channel (SiPM only)
-  darkCurrent_ =  psfPtr_->getSiPMDarkCurrent(channelData.darkCurrent(), 
-					      channelData.fcByPE(),
-					      channelData.lambda());
+  darkCurrent_ =  getSiPMDarkCurrent(channelData.darkCurrent(), 
+				     channelData.fcByPE(),
+				     channelData.lambda());
 
   //Average pedestal width (for covariance matrix constraint)
   pedConstraint_ = 0.25*( channelData.tsPedestalWidth(0)*channelData.tsPedestalWidth(0)+
@@ -96,17 +123,16 @@ void DoMahiAlgo::phase1Apply(const HBHEChannelInfo& channelData,
 
     //Total uncertainty from all sources
     noiseTerms_.coeffRef(iTS) = noiseADC*noiseADC + noiseDC*noiseDC + noisePhoto*noisePhoto + pedWidth*pedWidth;
-    //noiseTerms_.coeffRef(iTS) = noiseADC*noiseADC;// + noiseDC*noiseDC + pedWidth*pedWidth;
 
     tsTOT += charge - ped;
     if( iTS==TSOffset_ ){
-      tstrig += (charge - ped);//*channelData.tsGain(4);
+      tstrig += (charge - ped)*channelData.tsGain(0);
     }
   }
 
   bool status =false;
   if(tstrig >= TS4Thresh_) {
-    status = DoFit(charges,reconstructedVals,1); 
+    status = DoFit(charges,reconstructedVals);
   }
   
   if (!status) {
@@ -116,12 +142,12 @@ void DoMahiAlgo::phase1Apply(const HBHEChannelInfo& channelData,
   }
   
   reconstructedEnergy = reconstructedVals[0]*channelData.tsGain(0);
-  reconstructedTime = niterTot_;
+  reconstructedTime = 0;
   chi2 = reconstructedVals[1];
 
 }
 
-bool DoMahiAlgo::DoFit(SampleVector amplitudes, std::vector<float> &correctedOutput, int nbx) {
+bool DoMahiAlgo::DoFit(SampleVector amplitudes, std::vector<float> &correctedOutput) {
 
   bxs_.resize(BXSize_);
   for (unsigned int iBX=0; iBX<BXSize_; iBX++) {
@@ -131,10 +157,8 @@ bool DoMahiAlgo::DoFit(SampleVector amplitudes, std::vector<float> &correctedOut
   amplitudes_ = amplitudes;
 
   nP_ = 0;
-  //ECAL does it better -- to be fixed
-  // https://github.com/cms-sw/cmssw/blob/CMSSW_8_1_X/RecoLocalCalo/EcalRecProducers/plugins/EcalUncalibRecHitWorkerMultiFit.cc#L151-L171
   
-  pulseMat_.resize(Eigen::NoChange,BXSize_);
+  pulseMat_.resize(TSSize_,BXSize_);
   ampVec_ = PulseVector::Zero(BXSize_);
   errVec_ = PulseVector::Zero(BXSize_);
 
@@ -202,7 +226,6 @@ bool DoMahiAlgo::Minimize() {
 
   while (true) {
     if (iter>=nMaxItersMin_) {
-      //std::cout << "max number of iterations reached! " << std::endl;
       break;
     }
     
@@ -220,10 +243,7 @@ bool DoMahiAlgo::Minimize() {
     double newChiSq=CalculateChiSq();
     double deltaChiSq = newChiSq - chiSq_;
 
-    //std::cout << newChiSq << ", " << chiSq_ << ", " << oldChiSq <<  std::endl;
-
     if (newChiSq==oldChiSq && newChiSq<chiSq_) {
-      //std::cout << "endless loop recovery" << std::endl;
       break;
     }
     oldChiSq=chiSq_;
@@ -234,8 +254,6 @@ bool DoMahiAlgo::Minimize() {
     iter++;
     
   }
-
-  niterTot_+=iter;
 
   return status;
 }
@@ -285,8 +303,6 @@ bool DoMahiAlgo::UpdatePulseShape(double itQ, FullSampleVector &pulseShape, Full
   return true;  
 }
 
-
-
 bool DoMahiAlgo::UpdateCov() {
   
   bool status=true;
@@ -301,8 +317,6 @@ bool DoMahiAlgo::UpdateCov() {
     
     invCovMat_ += ampVec_.coeff(iBX)*ampVec_.coeff(iBX)
       *pulseCovArray_.at(offset+BXOffset_).block(FullTSOffset_-offset, FullTSOffset_-offset, TSSize_, TSSize_);
-
-    //invCovMat_ += ampVec_.coeff(iBX)*fcByPe_*SampleMatrix::Ones();
   }
   
   covDecomp_.compute(invCovMat_);
@@ -343,7 +357,6 @@ bool DoMahiAlgo::NNLS() {
       }
       
       if (iter>=nMaxItersNNLS_) {
-	std::cout << "Max Iterations reached!" << std::endl;
 	break;
       }
 
@@ -370,14 +383,7 @@ bool DoMahiAlgo::NNLS() {
       
       eigen_solve_submatrix(aTaMat_,aTbVec_,ampvecpermtest_,nP_);
 
-      //check solution    
-      //auto ampvecpermhead = ampvecpermtest_.head(nP_);
-
-      //if ( ampvecpermhead.minCoeff()>0. ) {
-      //	ampVec_.head(nP_) = ampvecpermhead.head(nP_);
-      //	break;
-      //}
-
+      //check solution
       bool positive = true;
       for (unsigned int i = 0; i < nP_; ++i)
         positive &= (ampvecpermtest_(i) > 0);
@@ -427,9 +433,6 @@ bool DoMahiAlgo::NNLS() {
     break;
   }
   
-
-  niterTot_+=1000*iter;
-  
   return true;
 }
 
@@ -458,6 +461,11 @@ void DoMahiAlgo::setPulseShapeTemplate(const HcalPulseShapes::Shape& ps) {
       resetPulseShapeTemplate(ps);
       currentPulseShape_ = &ps;
     }
+}
+
+double DoMahiAlgo::getSiPMDarkCurrent(double darkCurrent, double fcByPE, double lambda) {
+  double mu = darkCurrent * 25 / fcByPE;
+  return sqrt(mu/pow(1-lambda,3)) * fcByPE;
 }
 
 void DoMahiAlgo::resetPulseShapeTemplate(const HcalPulseShapes::Shape& ps) { 
@@ -531,7 +539,7 @@ void eigen_solve_submatrix(PulseMatrix& mat, PulseVector& invec, PulseVector& ou
     }
     break;
   default:
-    //throw cms::Exception("MultFitWeirdState")
-    std::cout << "Weird number of pulses encountered in multifit, module is configured incorrectly!" << std::endl;
+    throw cms::Exception("MultFitWeirdState");
+    //std::cout << "Weird number of pulses encountered in multifit, module is configured incorrectly!" << std::endl;
   }
 }

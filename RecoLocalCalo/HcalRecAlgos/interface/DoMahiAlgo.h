@@ -23,15 +23,13 @@ class DoMahiAlgo
   void phase1Apply(const HBHEChannelInfo& channelData, float& reconstructedEnergy, float& reconstructedTime, float& chi2);  
   bool DoFit(SampleVector amplitudes, std::vector<float> &correctedOutput, int nbx);
 
-  void setParameters(double iTS4Thresh, bool iApplyTimeSlew, HcalTimeSlew::BiasSetting slewFlavor,
-		     double iMeanTime, double iTimeSigmaHPD, double iTimeSigmaSiPM, //bool iUseConfigBXs,
+  void setParameters(double iTS4Thresh, double chiSqSwitch, bool iApplyTimeSlew, HcalTimeSlew::BiasSetting slewFlavor,
+		     double iMeanTime, double iTimeSigmaHPD, double iTimeSigmaSiPM, 
 		     const std::vector <int> &iActiveBXs, int iNMaxItersMin, int iNMaxItersNNLS,
 		     double iDeltaChiSqThresh, double iNnlsThresh);
 
   void setPulseShapeTemplate  (const HcalPulseShapes::Shape& ps);
   void resetPulseShapeTemplate(const HcalPulseShapes::Shape& ps);
-
-  //void setBxSpacing(const unsigned int bxSpacing);
 
   typedef BXVector::Index Index;
   const HcalPulseShapes::Shape* currentPulseShape_=nullptr;
@@ -53,6 +51,7 @@ class DoMahiAlgo
 
   // Python-configurables
   float TS4Thresh_; //0
+  float chiSqSwitch_; //10
 
   bool applyTimeSlew_; //true
   HcalTimeSlew::BiasSetting slewFlavor_; //medium
@@ -61,9 +60,7 @@ class DoMahiAlgo
   float timeSigmaHPD_; // 5.0
   float timeSigmaSiPM_; //2.5
 
-  //bool useConfigBXs_;
   std::vector <int> activeBXs_;
-  //int bxSpacing_;
 
   int nMaxItersMin_; //500 
   int nMaxItersNNLS_; //500

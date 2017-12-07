@@ -4,11 +4,8 @@ import FWCore.ParameterSet.Config as cms
 mahiParameters = cms.PSet(
 
     ts4Thresh        = cms.double(0.0),
-
-    #activeBXs        = cms.vint32( -4, -3, -2, -1, 0, 1, 2, 3, 4),
+    chiSqSwitch      = cms.double(10.0),
     activeBXs        = cms.vint32(-1, 0, 1),
-    #activeBXs        = cms.vint32(0),
-
     nMaxItersMin      = cms.int32(500),
     nMaxItersNNLS     = cms.int32(500),
     deltaChiSqThresh  = cms.double(1e-3),

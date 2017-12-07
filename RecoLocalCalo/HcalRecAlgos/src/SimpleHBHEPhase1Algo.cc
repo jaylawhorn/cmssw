@@ -113,27 +113,30 @@ HBHERecHit SimpleHBHEPhase1Algo::reconstruct(const HBHEChannelInfo& info,
     // Finally, construct the rechit
     float rhE = m0E;
     float rht = m0t;
+    float rhX = 0.f;
     if (mahi) {
       rhE = m10E;
       rht = m10T;
+      rhX = chi2_mahi;
     }
     else if (method2)
     {
         rhE = m2E;
         rht = m2t;
+	rhX = chi2;
     }
     else if (method3)
     {
         rhE = m3E;
         rht = m3t;
     }
-    //float tdcTime = info.soiRiseTime();
-    //if (!HcalSpecialTimes::isSpecial(tdcTime))
-    //tdcTime += timeShift_;
-    rh = HBHERecHit(channelId, rhE, rht, chi2_mahi);
+    float tdcTime = info.soiRiseTime();
+    if (!HcalSpecialTimes::isSpecial(tdcTime))
+    tdcTime += timeShift_;
+    rh = HBHERecHit(channelId, rhE, rht, tdcTime);
     rh.setRawEnergy(m3E);
     rh.setAuxEnergy(m2E);
-    rh.setChiSquared(chi2);
+    rh.setChiSquared(rhX);
 
     // Set rechit aux words
     HBHERecHitAuxSetter::setAux(info, &rh);

@@ -14,6 +14,8 @@ parseHBHEMahiDescription(const edm::ParameterSet& conf)
 {
 
   const double iTS4Thresh     = conf.getParameter<double> ("ts4Thresh");
+  const double chiSqSwitch    = conf.getParameter<double> ("chiSqSwitch");
+
   const bool iApplyTimeSlew   = conf.getParameter<bool>   ("applyTimeSlew");
 
   const double iMeanTime      = conf.getParameter<double> ("meanTime");
@@ -28,7 +30,7 @@ parseHBHEMahiDescription(const edm::ParameterSet& conf)
 
   std::unique_ptr<DoMahiAlgo> corr = std::make_unique<DoMahiAlgo>();
 
-  corr->setParameters(iTS4Thresh, iApplyTimeSlew, HcalTimeSlew::Medium,
+  corr->setParameters(iTS4Thresh, chiSqSwitch, iApplyTimeSlew, HcalTimeSlew::Medium,
 		      iMeanTime, iTimeSigmaHPD, iTimeSigmaSiPM,
 		      iActiveBXs, iNMaxItersMin, iNMaxItersNNLS,
 		      iDeltaChiSqThresh, iNnlsThresh);

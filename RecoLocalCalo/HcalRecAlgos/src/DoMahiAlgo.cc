@@ -11,12 +11,13 @@ DoMahiAlgo::DoMahiAlgo() :
   FullTSofInterest_(8) //8
 {}
 
-void DoMahiAlgo::setParameters(double iTS4Thresh, bool iApplyTimeSlew, HcalTimeSlew::BiasSetting slewFlavor,
+void DoMahiAlgo::setParameters(double iTS4Thresh, double chiSqSwitch, bool iApplyTimeSlew, HcalTimeSlew::BiasSetting slewFlavor,
 			       double iMeanTime, double iTimeSigmaHPD, double iTimeSigmaSiPM, //bool iUseConfigBXs,
 			       const std::vector <int> &iActiveBXs, int iNMaxItersMin, int iNMaxItersNNLS,
 			       double iDeltaChiSqThresh, double iNnlsThresh) {
 
   TS4Thresh_     = iTS4Thresh;
+  chiSqSwitch_   = chiSqSwitch;
 
   applyTimeSlew_ = iApplyTimeSlew;
   slewFlavor_    = slewFlavor;
@@ -25,7 +26,6 @@ void DoMahiAlgo::setParameters(double iTS4Thresh, bool iApplyTimeSlew, HcalTimeS
   timeSigmaHPD_  = iTimeSigmaHPD;
   timeSigmaSiPM_ = iTimeSigmaSiPM;
 
-  //useConfigBXs_ = iUseConfigBXs;
   activeBXs_ = iActiveBXs;
 
   nMaxItersMin_  = iNMaxItersMin;
@@ -37,32 +37,6 @@ void DoMahiAlgo::setParameters(double iTS4Thresh, bool iApplyTimeSlew, HcalTimeS
   BXOffsetConf_ = -(*std::min_element(activeBXs_.begin(), activeBXs_.end()));
   BXSizeConf_   = activeBXs_.size();
 }
-
-/*void DoMahiAlgo::setBxSpacing(const unsigned int bxSpacing) {
-  if (!useConfigBXs_) {
-    if (bxSpacing==25) {
-      activeBXs_.clear();
-      activeBXs_.push_back(-1);
-      activeBXs_.push_back(0);
-      activeBXs_.push_back(1);
-      BXOffset_ = 1;
-      BXSize_ = 3;
-    }
-    else {
-      activeBXs_.clear();
-      activeBXs_.push_back(0);
-      BXOffset_ = 0;
-      BXSize_ = 1;
-    }
-  }
-  else {
-    activeBXs_.clear();
-    activeBXs_ = activeBXsConf_;
-    BXOffset_ = BXOffsetConf_;
-    BXSize_ = BXSizeConf_;
-  }
-
-  }*/
 
 void DoMahiAlgo::phase1Apply(const HBHEChannelInfo& channelData,
 			     float& reconstructedEnergy,
@@ -132,18 +106,14 @@ void DoMahiAlgo::phase1Apply(const HBHEChannelInfo& channelData,
 
   bool status =false;
   if(tstrig >= TS4Thresh_) {
-    status = DoFit(charges,reconstructedVals,1);
-    if (reconstructedVals[1]>10) {
-      //float tempQ = reconstructedVals[0];
-      //float tempX = reconstructedVals[1];
-      
-      status = DoFit(charges,reconstructedVals,3);
-      
-      //if (tempX<reconstructedVals[1]) {
-      //	reconstructedVals[0]=tempQ;
-      //	reconstructedVals[1]=tempX;
-      //}
-    
+    if (chiSqSwitch_>0) {
+      status = DoFit(charges,reconstructedVals,1);
+      if (reconstructedVals[1]>chiSqSwitch_) {
+	status = DoFit(charges,reconstructedVals,0);
+      }
+    }
+    else {
+      status = DoFit(charges,reconstructedVals,0);
     }
   }
   
@@ -181,7 +151,6 @@ bool DoMahiAlgo::DoFit(SampleVector amplitudes, std::vector<float> &correctedOut
     }
   }
 
-  //std::cout << BXSize_ << std::endl;
   amplitudes_ = amplitudes;
 
   nP_ = 0;

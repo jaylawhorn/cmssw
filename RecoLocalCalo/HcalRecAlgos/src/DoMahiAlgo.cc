@@ -34,8 +34,8 @@ void DoMahiAlgo::setParameters(double iTS4Thresh, bool iApplyTimeSlew, HcalTimeS
   deltaChiSqThresh_ = iDeltaChiSqThresh;
   nnlsThresh_    = iNnlsThresh;
 
-  BXOffset_ = -(*std::min_element(activeBXs_.begin(), activeBXs_.end()));
-  BXSize_   = activeBXs_.size();
+  BXOffsetConf_ = -(*std::min_element(activeBXs_.begin(), activeBXs_.end()));
+  BXSizeConf_   = activeBXs_.size();
 }
 
 /*void DoMahiAlgo::setBxSpacing(const unsigned int bxSpacing) {
@@ -132,7 +132,19 @@ void DoMahiAlgo::phase1Apply(const HBHEChannelInfo& channelData,
 
   bool status =false;
   if(tstrig >= TS4Thresh_) {
-    status = DoFit(charges,reconstructedVals);
+    status = DoFit(charges,reconstructedVals,1);
+    if (reconstructedVals[1]>10) {
+      //float tempQ = reconstructedVals[0];
+      //float tempX = reconstructedVals[1];
+      
+      status = DoFit(charges,reconstructedVals,3);
+      
+      //if (tempX<reconstructedVals[1]) {
+      //	reconstructedVals[0]=tempQ;
+      //	reconstructedVals[1]=tempX;
+      //}
+    
+    }
   }
   
   if (!status) {
@@ -147,13 +159,29 @@ void DoMahiAlgo::phase1Apply(const HBHEChannelInfo& channelData,
 
 }
 
-bool DoMahiAlgo::DoFit(SampleVector amplitudes, std::vector<float> &correctedOutput) {
+bool DoMahiAlgo::DoFit(SampleVector amplitudes, std::vector<float> &correctedOutput, int nbx) {
 
-  bxs_.resize(BXSize_);
-  for (unsigned int iBX=0; iBX<BXSize_; iBX++) {
-    bxs_.coeffRef(iBX) = activeBXs_[iBX];
+  if (nbx==1) {
+    BXSize_ = 1;
+    BXOffset_ = 0;
+  }
+  else {
+    BXSize_ = BXSizeConf_;
+    BXOffset_ = BXOffsetConf_;
   }
 
+  bxs_.resize(BXSize_);
+
+  if (nbx==1) {
+    bxs_.coeffRef(0) = 0;
+  }
+  else {
+    for (unsigned int iBX=0; iBX<BXSize_; iBX++) {
+      bxs_.coeffRef(iBX) = activeBXs_[iBX];
+    }
+  }
+
+  //std::cout << BXSize_ << std::endl;
   amplitudes_ = amplitudes;
 
   nP_ = 0;
@@ -451,7 +479,7 @@ bool DoMahiAlgo::OnePulseMinimize() {
 
 double DoMahiAlgo::CalculateChiSq() {
 
-  return covDecomp_.matrixL().solve(pulseMat_*ampVec_ - amplitudes_).squaredNorm();
+  return (covDecomp_.matrixL().solve(pulseMat_*ampVec_ - amplitudes_)).squaredNorm();
 }
 
 void DoMahiAlgo::setPulseShapeTemplate(const HcalPulseShapes::Shape& ps) {

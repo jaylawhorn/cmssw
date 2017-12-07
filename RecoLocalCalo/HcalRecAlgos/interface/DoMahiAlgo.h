@@ -21,7 +21,7 @@ class DoMahiAlgo
   ~DoMahiAlgo() { };
 
   void phase1Apply(const HBHEChannelInfo& channelData, float& reconstructedEnergy, float& reconstructedTime, float& chi2);  
-  bool DoFit(SampleVector amplitudes, std::vector<float> &correctedOutput);
+  bool DoFit(SampleVector amplitudes, std::vector<float> &correctedOutput, int nbx);
 
   void setParameters(double iTS4Thresh, bool iApplyTimeSlew, HcalTimeSlew::BiasSetting slewFlavor,
 		     double iMeanTime, double iTimeSigmaHPD, double iTimeSigmaSiPM, //bool iUseConfigBXs,
@@ -74,8 +74,8 @@ class DoMahiAlgo
   unsigned int BXSize_;
   int BXOffset_;
 //  std::vector <int> activeBXs_;
-//  unsigned int BXSizeConf_;
-//  int BXOffsetConf_;
+  unsigned int BXSizeConf_;
+  int BXOffsetConf_;
 
   //from channelData
   float dt_;

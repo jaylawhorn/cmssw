@@ -292,9 +292,9 @@ void MahiFit::updatePulseShape(double itQ, FullSampleVector &pulseShape, FullSam
   (*pfunctor_)(&xxp[0]);
   psfPtr_->getPulseShape(nnlsWork_.pulseP);
 
-  //in the 2018+ case where the sample of interest (SOI) is in TS3, add an extra offset to align with previous SOI=TS4 case
-  //assumed by psfPtr_->getPulseShape()
-  int delta =nnlsWork_. tsSize == 3 ? 1 : 0;
+  //in the 2018+ case where the sample of interest (SOI) is in TS3, add an extra offset to align 
+  //with previous SOI=TS4 case assumed by psfPtr_->getPulseShape()
+  int delta =nnlsWork_. tsOffset == 3 ? 1 : 0;
 
   for (unsigned int iTS=nnlsWork_.fullTSOffset; iTS<nnlsWork_.fullTSOffset + nnlsWork_.tsSize; iTS++) {
 

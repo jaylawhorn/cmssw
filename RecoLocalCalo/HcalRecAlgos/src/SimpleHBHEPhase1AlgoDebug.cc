@@ -67,10 +67,11 @@ MahiDebugInfo SimpleHBHEPhase1AlgoDebug::recoDebug(const HBHEChannelInfo& info,
 
   //std::cout << "yo " << std::endl;
 
-  std::cout << hcalTimeSlew_delay_->delay(0,HcalTimeSlew::Medium) << std::endl;
+  //std::cout << hcalTimeSlewDelay_->delay(0,HcalTimeSlew::Medium) << std::endl;
 
   if (mahi) {
-    mahiOOTpuCorr_->setPulseShapeTemplate(theHcalPulseShapes_.getShape(info.recoShape()));
+    mahiOOTpuCorr_->setPulseShapeTemplate(theHcalPulseShapes_.getShape(info.recoShape()),
+					  hcalTimeSlewDelay_);
     //mahi->phase1Apply(info,m4E,m4T,m4UseTriple,m4chi2,hcalTimeSlew_delay_);
   //m4E *= hbminusCorrectionFactor(channelId, m4E, isData);
   }

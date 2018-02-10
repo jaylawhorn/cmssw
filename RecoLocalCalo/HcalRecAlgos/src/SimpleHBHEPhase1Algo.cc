@@ -36,16 +36,14 @@ SimpleHBHEPhase1Algo::SimpleHBHEPhase1Algo(
       psFitOOTpuCorr_(std::move(m2)),
       hltOOTpuCorr_(std::move(detFit)),
       mahiOOTpuCorr_(std::move(mahi))
-{
-  hcalTimeSlew_delay_ = nullptr;
-}
+{}
 
 void SimpleHBHEPhase1Algo::beginRun(const edm::Run& r,
                                     const edm::EventSetup& es)
 {
     edm::ESHandle<HcalTimeSlew> delay;
     es.get<HcalTimeSlewRecord>().get("HBHE", delay);
-    hcalTimeSlew_delay_ = &*delay;
+    hcalTimeSlewDelay_ = *delay;
   
     runnum_ = r.run();
     pulseCorr_.beginRun(es);
@@ -91,7 +89,7 @@ HBHERecHit SimpleHBHEPhase1Algo::reconstruct(const HBHEChannelInfo& info,
                                                !info.hasTimeInfo(),info.nSamples());
         // "phase1Apply" call below sets m2E, m2t, useTriple, and chi2.
         // These parameters are pased by non-const reference.
-        method2->phase1Apply(info, m2E, m2t, useTriple, chi2, hcalTimeSlew_delay_);
+        method2->phase1Apply(info, m2E, m2t, useTriple, chi2, hcalTimeSlewDelay_);
         m2E *= hbminusCorrectionFactor(channelId, m2E, isData);
     }
 
@@ -101,7 +99,7 @@ HBHERecHit SimpleHBHEPhase1Algo::reconstruct(const HBHEChannelInfo& info,
     if (method3)
     {
         // "phase1Apply" sets m3E and m3t (pased by non-const reference)
-        method3->phase1Apply(info, m3E, m3t, hcalTimeSlew_delay_);
+        method3->phase1Apply(info, m3E, m3t, hcalTimeSlewDelay_);
         m3E *= hbminusCorrectionFactor(channelId, m3E, isData);
     }
 
@@ -113,8 +111,9 @@ HBHERecHit SimpleHBHEPhase1Algo::reconstruct(const HBHEChannelInfo& info,
     const MahiFit* mahi = mahiOOTpuCorr_.get();
 
     if (mahi) {
-      mahiOOTpuCorr_->setPulseShapeTemplate(theHcalPulseShapes_.getShape(info.recoShape()));
-      mahi->phase1Apply(info,m4E,m4T,m4UseTriple,m4chi2,hcalTimeSlew_delay_);
+      mahiOOTpuCorr_->setPulseShapeTemplate(theHcalPulseShapes_.getShape(info.recoShape()),
+					    hcalTimeSlewDelay_);
+      mahi->phase1Apply(info,m4E,m4T,m4UseTriple,m4chi2);
       m4E *= hbminusCorrectionFactor(channelId, m4E, isData);
     }
 
@@ -233,7 +232,7 @@ float SimpleHBHEPhase1Algo::m0Time(const HBHEChannelInfo& info,
             time = (maxI - soi)*25.f + timeshift_ns_hbheho(wpksamp);
 
             // Legacy QIE8 timing correction
-            time -= hcalTimeSlew_delay_->delay(std::max(1.0, fc_ampl), HcalTimeSlew::Medium);
+            time -= hcalTimeSlewDelay_.delay(std::max(1.0, fc_ampl), HcalTimeSlew::Medium);
             // Time calibration
             time -= calibs.timecorr();
         }

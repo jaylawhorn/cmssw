@@ -90,95 +90,29 @@ class HBHEReconstructionDebugger : public edm::one::EDAnalyzer<edm::one::SharedR
       virtual void endJob() override;
 
       // ----------member data ---------------------------
+      std::unique_ptr<AbsHBHEPhase1Algo> reco_;
+      edm::EDGetTokenT<HBHEChannelInfoCollection> token_ChannelInfo_;
 
-  std::string algoConfigClass_;
-  bool processQIE8_;
-  bool processQIE11_;
-  bool saveInfos_;
-  bool saveDroppedInfos_;
-  bool makeRecHits_;
-  bool dropZSmarkedPassed_;
-  bool tsFromDB_;
-  bool recoParamsFromDB_;
-  bool saveEffectivePedestal_;
-  int sipmQTSShift_;
-  int sipmQNTStoSum_;
+      edm::Service<TFileService> FileService;
+      TTree *outTree;
 
-  bool setNegativeFlagsQIE8_;
-  bool setNegativeFlagsQIE11_;
-  bool setNoiseFlagsQIE8_;
-  bool setNoiseFlagsQIE11_;
-  bool setPulseShapeFlagsQIE8_;
-  bool setPulseShapeFlagsQIE11_;
-
-  
-  //std::map<int, double> hitEnergySumMap_;
-  //HcalSimParameterMap simParameterMap_;
-
-  edm::EDGetTokenT<HBHEChannelInfoCollection> token_ChannelInfo_;
-  //edm::EDGetTokenT<HBHERecHitCollection> token_RecHit_;
-  //edm::EDGetTokenT<edm::PCaloHitContainer> tok_hbhe_sim_;
-
-  edm::Service<TFileService> FileService;
-
-  std::unique_ptr<AbsHBHEPhase1Algo> reco_;
-
-  //const HcalDDDRecConstants *hcons;
-  //const CaloGeometry *Geometry;
-
-  //TTree *outTree;
-
+  int ieta;
+  int iphi;
+  int depth;
+  int soi;
 
 };
 
-//
-// constants, enums and typedefs
-//
-
-//
-// static data member definitions
-//
-
-//
-// constructors and destructor
-//
 HBHEReconstructionDebugger::HBHEReconstructionDebugger(const edm::ParameterSet& iConfig)
-  :  //algoConfigClass_(iConfig.getParameter<std::string>("algoConfigClass")),
-     //processQIE8_(iConfig.getParameter<bool>("processQIE8")),
-     //processQIE11_(iConfig.getParameter<bool>("processQIE11")),
-     //saveInfos_(iConfig.getParameter<bool>("saveInfos")),
-     //saveDroppedInfos_(iConfig.getParameter<bool>("saveDroppedInfos")),
-     //makeRecHits_(iConfig.getParameter<bool>("makeRecHits")),
-     //dropZSmarkedPassed_(iConfig.getParameter<bool>("dropZSmarkedPassed")),
-     //tsFromDB_(iConfig.getParameter<bool>("tsFromDB")),
-     //recoParamsFromDB_(iConfig.getParameter<bool>("recoParamsFromDB")),
-     //saveEffectivePedestal_(iConfig.getParameter<bool>("saveEffectivePedestal")),
-     //sipmQTSShift_(iConfig.getParameter<int>("sipmQTSShift")),
-     //sipmQNTStoSum_(iConfig.getParameter<int>("sipmQNTStoSum")),
-     //setNegativeFlagsQIE8_(iConfig.getParameter<bool>("setNegativeFlagsQIE8")),
-     //setNegativeFlagsQIE11_(iConfig.getParameter<bool>("setNegativeFlagsQIE11")),
-     //setNoiseFlagsQIE8_(iConfig.getParameter<bool>("setNoiseFlagsQIE8")),
-     //setNoiseFlagsQIE11_(iConfig.getParameter<bool>("setNoiseFlagsQIE11")),
-     //setPulseShapeFlagsQIE8_(iConfig.getParameter<bool>("setPulseShapeFlagsQIE8")),
-     //setPulseShapeFlagsQIE11_(iConfig.getParameter<bool>("setPulseShapeFlagsQIE11")),
-     reco_(parseHBHEPhase1AlgoDescription(iConfig.getParameter<edm::ParameterSet>("algorithm")))
+  : reco_(parseHBHEPhase1AlgoDescription(iConfig.getParameter<edm::ParameterSet>("algorithm")))
 {
-   //now do what ever initialization is needed
    usesResource("TFileService");
-
    token_ChannelInfo_ = consumes<HBHEChannelInfoCollection>(edm::InputTag("hbheprereco",""));
-   //token_RecHit_ = consumes<HBHERecHitCollection>(edm::InputTag("hbheprereco",""));
-   //tok_hbhe_sim_ = consumes<edm::PCaloHitContainer>(edm::InputTag("g4SimHits","HcalHits"));
-
 }
 
 
 HBHEReconstructionDebugger::~HBHEReconstructionDebugger()
 {
- 
-   // do anything here that needs to be done at desctruction time
-   // (e.g. close files, deallocate resources etc.)
-
 }
 
 
@@ -187,17 +121,9 @@ HBHEReconstructionDebugger::~HBHEReconstructionDebugger()
 //
 
 // ------------ method called for each event  ------------
-void
-HBHEReconstructionDebugger::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
+void HBHEReconstructionDebugger::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
 {
-
-  std::cout << "hi?" << std::endl;
-
    using namespace edm;
-
-   //ESHandle<HcalDDDRecConstants> pHRNDC;
-   //iSetup.get<HcalRecNumberingRecord>().get( pHRNDC );
-   //hcons = &(*pHRNDC);
 
    Handle<HBHEChannelInfoCollection> hChannelInfo;
    iEvent.getByToken(token_ChannelInfo_, hChannelInfo);
@@ -206,25 +132,18 @@ HBHEReconstructionDebugger::analyze(const edm::Event& iEvent, const edm::EventSe
 	iter != hChannelInfo->end(); iter++) {
 
      const HBHEChannelInfo& hci(*iter);
+     const HcalDetId detid=hci.id();
+
+     ieta  = detid.ieta();
+     iphi  = detid.iphi();
+     depth = detid.depth();
+
      const bool isRealData = true;
-
      MahiDebugInfo mdi = static_cast<SimpleHBHEPhase1AlgoDebug*>(reco_.get())->recoDebug(hci, isRealData);
-     std::cout << mdi.soi << std::endl;
+     soi = mdi.soi;
 
+     outTree->Fill();
    }
-
-   //Handle<HBHERecHitCollection> hRecHit;
-   //iEvent.getByToken(token_RecHit_, hRecHit);
-   //
-   //Handle<PCaloHitContainer> hSimHits;
-   //iEvent.getByToken(tok_hbhe_sim_,hSimHits);
-   //
-   //ESHandle<HcalDbService> hConditions;
-   //iSetup.get<HcalDbRecord>().get(hConditions);
-   //
-   //ESHandle<CaloGeometry> hGeometry;
-   //iSetup.get<CaloGeometryRecord>().get(hGeometry);
-   //Geometry = hGeometry.product();
 
 }
 
@@ -233,6 +152,14 @@ HBHEReconstructionDebugger::analyze(const edm::Event& iEvent, const edm::EventSe
 void 
 HBHEReconstructionDebugger::beginJob()
 {
+
+  outTree = FileService->make<TTree>("HcalTree","HcalTree");
+  
+  outTree->Branch("ieta",  &ieta,  "ieta/I");
+  outTree->Branch("iphi",  &iphi,  "iphi/I");
+  outTree->Branch("depth", &depth, "depth/I");
+  outTree->Branch("soi",   &soi,   "soi/I");
+
 }
 
 // ------------ method called once each job just after ending the event loop  ------------
@@ -241,7 +168,7 @@ HBHEReconstructionDebugger::endJob()
 {
 }
 
-#define add_param_set(name) /**/       \
+#define add_param_set(name)	     \
   edm::ParameterSetDescription name; \
   name.setAllowAnything();           \
   desc.add<edm::ParameterSetDescription>(#name, name)
@@ -250,32 +177,7 @@ HBHEReconstructionDebugger::endJob()
 // ------------ method fills 'descriptions' with the allowed parameters for the module  ------------
 void
 HBHEReconstructionDebugger::fillDescriptions(edm::ConfigurationDescriptions& descriptions) {
-  //The following says we do not know what parameters are allowed so do no validation
-  // Please change this to state exactly what you do use, even if it is no parameters
   edm::ParameterSetDescription desc;
-
-  //desc.add<edm::InputTag>("digiLabelQIE8");
-  //desc.add<edm::InputTag>("digiLabelQIE11");
-  //desc.add<std::string>("algoConfigClass");
-  //desc.add<bool>("processQIE8");
-  //desc.add<bool>("processQIE11");
-  //desc.add<bool>("saveInfos");
-  //desc.add<bool>("saveDroppedInfos");
-  //desc.add<bool>("makeRecHits");
-  //desc.add<bool>("dropZSmarkedPassed");
-  //desc.add<bool>("tsFromDB");
-  //desc.add<bool>("recoParamsFromDB");
-  //desc.add<bool>("saveEffectivePedestal", false);
-  //desc.add<int>("sipmQTSShift", 0);
-  //desc.add<int>("sipmQNTStoSum", 3);
-  //desc.add<bool>("setNegativeFlagsQIE8");
-  //desc.add<bool>("setNegativeFlagsQIE11");
-  //desc.add<bool>("setNoiseFlagsQIE8");
-  //desc.add<bool>("setNoiseFlagsQIE11");
-  //desc.add<bool>("setPulseShapeFlagsQIE8");
-  //desc.add<bool>("setPulseShapeFlagsQIE11");
-  //desc.add<bool>("setLegacyFlagsQIE8");
-  //desc.add<bool>("setLegacyFlagsQIE11");
 
   add_param_set(algorithm);
   descriptions.addDefault(desc);

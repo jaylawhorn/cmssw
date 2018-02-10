@@ -71,8 +71,6 @@ public:
     inline bool isCorrectingForPhaseContainment() const {return corrFPC_;}
     inline int getRunNumber() const {return runnum_;}
 
-    const HcalTimeSlew* hcalTimeSlew_delay_;
-
 protected:
     // Special HB- correction
     float hbminusCorrectionFactor(const HcalDetId& cell,
@@ -111,6 +109,7 @@ private:
     std::unique_ptr<MahiFit> mahiOOTpuCorr_;
 
     HcalPulseShapes theHcalPulseShapes_;
+    HcalTimeSlew hcalTimeSlewDelay_;
 };
 
 #endif // RecoLocalCalo_HcalRecAlgos_SimpleHBHEPhase1Algo_h_

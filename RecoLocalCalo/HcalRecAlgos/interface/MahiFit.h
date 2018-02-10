@@ -105,23 +105,22 @@ class MahiFit
 		     double iDeltaChiSqThresh, double iNnlsThresh);
 
   void phase1Debug(const HBHEChannelInfo& channelData,
-		   const MahiDebugInfo& mdi,
-                   const HcalTimeSlew* hcalTimeSlew_delay) const;
+		   const MahiDebugInfo& mdi) const;
 
   void phase1Apply(const HBHEChannelInfo& channelData, 
 		   float& reconstructedEnergy, 
 		   float& reconstructedTime, 
 		   bool& useTriple,
-		   float& chi2,
-		   const HcalTimeSlew* hcalTimeSlew_delay) const;
+		   float& chi2) const;
 
-  void doFit(std::array<float,3> &correctedOutput, int nbx, const HcalTimeSlew* hcalTimeSlew_delay) const;
+  void doFit(std::array<float,3> &correctedOutput, int nbx) const;
 
-  void setPulseShapeTemplate  (const HcalPulseShapes::Shape& ps);
+  void setPulseShapeTemplate  (const HcalPulseShapes::Shape& ps, const HcalTimeSlew& hcalTimeSlewDelay);
   void resetPulseShapeTemplate(const HcalPulseShapes::Shape& ps);
 
   typedef BXVector::Index Index;
   const HcalPulseShapes::Shape* currentPulseShape_=nullptr;
+  const HcalTimeSlew* hcalTimeSlewDelay_=nullptr;
 
  private:
 
@@ -130,8 +129,7 @@ class MahiFit
   void updateCov() const;
   void updatePulseShape(double itQ, FullSampleVector &pulseShape, 
 			FullSampleVector &pulseDeriv,
-			FullSampleMatrix &pulseCov,
-			const HcalTimeSlew* hcalTimeSlew_delay) const;
+			FullSampleMatrix &pulseCov) const;
   double calculateArrivalTime() const;
   double calculateChiSq() const;
   void nnls() const;

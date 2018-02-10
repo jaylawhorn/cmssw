@@ -31,7 +31,7 @@ public:
 		     float& reconstructedTime,
 		     bool & useTriple,
 		     float& chi2,
-		     const HcalTimeSlew* hcalTimeSlew_delay) const;
+		     const HcalTimeSlew& hcalTimeSlewDelay) const;
 
     void setPUParams(bool   iPedestalConstraint, bool iTimeConstraint,bool iAddPulseJitter,bool iApplyTimeSlew,
 		     double iTS4Min, const std::vector<double> & iTS4Max,
@@ -52,7 +52,7 @@ private:
     double getSiPMDarkCurrent(double darkCurrent, double fcByPE, double lambda) const;
 
     int pulseShapeFit(const double * energyArr, const double * pedenArr, const double *chargeArr, 
-		      const double *pedArr, const double *gainArr, const double tsTOTen, std::vector<float> &fitParsVec, const double * ADCnoise, unsigned int soi, const HcalTimeSlew* hcalTimeSlew_delay) const;
+		      const double *pedArr, const double *gainArr, const double tsTOTen, std::vector<float> &fitParsVec, const double * ADCnoise, unsigned int soi, const HcalTimeSlew& hcalTimeSlewDelay) const;
     void fit(int iFit,float &timevalfit,float &chargevalfit,float &pedvalfit,float &chi2,bool &fitStatus,double &iTSMax,
 	     const double  &iTSTOTen,double *iEnArr,unsigned (&iBX)[3]) const;
 

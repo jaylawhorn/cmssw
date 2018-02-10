@@ -24,7 +24,7 @@ class HcalDeterministicFit {
   void phase1Apply(const HBHEChannelInfo& channelData,
 		   float& reconstructedEnergy,
 		   float& reconstructedTime,
-		   const HcalTimeSlew* hcalTimeSlew_delay) const;
+		   const HcalTimeSlew& hcalTimeSlewDelay) const;
 
   // This is the CMSSW Implementation of the apply function
   void getLandauFrac(float tStart, float tEnd, float &sum) const;

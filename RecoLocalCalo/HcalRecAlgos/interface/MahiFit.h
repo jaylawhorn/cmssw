@@ -14,6 +14,17 @@
 
 #include <Math/Functor.h>
 
+struct MahiDebugInfo {
+
+  int    nSamples;
+  int    soi;
+
+  double mahiEnergy;
+  double chiSq;
+  double arrivalTime;
+
+};
+
 struct MahiNnlsWorkspace {
 
   unsigned int nPulseTot;
@@ -92,6 +103,10 @@ class MahiFit
 		     double iMeanTime, double iTimeSigmaHPD, double iTimeSigmaSiPM, 
 		     const std::vector <int> &iActiveBXs, int iNMaxItersMin, int iNMaxItersNNLS,
 		     double iDeltaChiSqThresh, double iNnlsThresh);
+
+  void phase1Debug(const HBHEChannelInfo& channelData,
+		   const MahiDebugInfo& mdi,
+                   const HcalTimeSlew* hcalTimeSlew_delay) const;
 
   void phase1Apply(const HBHEChannelInfo& channelData, 
 		   float& reconstructedEnergy, 

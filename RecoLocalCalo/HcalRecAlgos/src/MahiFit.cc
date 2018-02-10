@@ -42,6 +42,12 @@ void MahiFit::setParameters(bool iDynamicPed, double iTS4Thresh, double chiSqSwi
 
 }
 
+void MahiFit::phase1Debug(const HBHEChannelInfo& channelData,
+			  const MahiDebugInfo&mdi,
+			  const HcalTimeSlew* hcalTimeSlew_delay) const {
+  
+}
+
 void MahiFit::phase1Apply(const HBHEChannelInfo& channelData,
 			  float& reconstructedEnergy,
 			  float& reconstructedTime,

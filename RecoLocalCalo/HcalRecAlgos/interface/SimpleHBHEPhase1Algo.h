@@ -17,6 +17,8 @@
 
 class SimpleHBHEPhase1Algo : public AbsHBHEPhase1Algo
 {
+  friend class SimpleHBHEPhase1AlgoDebug;
+
 public:
     // Constructor arguments:
     //
@@ -58,9 +60,9 @@ public:
     inline bool isConfigurable() const override {return false;}
 
     HBHERecHit reconstruct(const HBHEChannelInfo& info,
-                                   const HcalRecoParam* params,
-                                   const HcalCalibrations& calibs,
-                                   bool isRealData) override;
+			   const HcalRecoParam* params,
+			   const HcalCalibrations& calibs,
+			   bool isRealData) override;
     // Basic accessors
     inline int getFirstSampleShift() const {return firstSampleShift_;}
     inline int getSamplesToAdd() const {return samplesToAdd_;}

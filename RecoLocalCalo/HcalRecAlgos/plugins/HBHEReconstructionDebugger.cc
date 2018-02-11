@@ -136,19 +136,19 @@ class HBHEReconstructionDebugger : public edm::one::EDAnalyzer<edm::one::SharedR
 
   bool  use3;
 
-  float mahiEnergy;
+  float mahiEnergy;//SOI charge
   float chiSq;
   float arrivalTime;
 
-  float pEnergy;
-  float nEnergy;
-  float pedEnergy;
+  float pEnergy; //SOI-1 charge
+  float nEnergy; //SOI+1 charge
+  float pedEnergy; //pedestal charge
 
-  float count[10];
-  float inputTS[10];
-  float itPulse[10];
-  float pPulse[10];
-  float nPulse[10];
+  float count[10]; //TS value 0-9
+  float inputTS[10];//input TS samples
+  float itPulse[10];//SOI pulse shape
+  float pPulse[10];//SOI-1 pulse shape
+  float nPulse[10];//SOI+1 pulse shape
 
 
 };

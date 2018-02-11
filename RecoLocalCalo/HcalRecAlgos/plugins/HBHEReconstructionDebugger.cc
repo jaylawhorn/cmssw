@@ -90,24 +90,80 @@ class HBHEReconstructionDebugger : public edm::one::EDAnalyzer<edm::one::SharedR
       virtual void endJob() override;
 
       // ----------member data ---------------------------
-      std::unique_ptr<AbsHBHEPhase1Algo> reco_;
-      edm::EDGetTokenT<HBHEChannelInfoCollection> token_ChannelInfo_;
+  // Configuration parameters
+//  std::string algoConfigClass_;
+//  bool processQIE8_;
+//  bool processQIE11_;
+//  bool saveInfos_;
+//  bool saveDroppedInfos_;
+//  bool makeRecHits_;
+//  bool dropZSmarkedPassed_;
+//  bool tsFromDB_;
+//  bool recoParamsFromDB_;
+//  bool saveEffectivePedestal_;
+//  int sipmQTSShift_;
+//  int sipmQNTStoSum_;
+//
+//  // Parameters for turning status bit setters on/off
+//  bool setNegativeFlagsQIE8_;
+//  bool setNegativeFlagsQIE11_;
+//  bool setNoiseFlagsQIE8_;
+//  bool setNoiseFlagsQIE11_;
+//  bool setPulseShapeFlagsQIE8_;
+//  bool setPulseShapeFlagsQIE11_;
+//
+//  // Other members
+//  edm::EDGetTokenT<HBHEDigiCollection> tok_qie8_;
+//  edm::EDGetTokenT<QIE11DigiCollection> tok_qie11_;
+//  std::unique_ptr<AbsHBHEPhase1Algo> reco_;
+//  std::unique_ptr<AbsHcalAlgoData> recoConfig_;
+//  std::unique_ptr<HcalRecoParams> paramTS_;
 
-      edm::Service<TFileService> FileService;
-      TTree *outTree;
+  std::unique_ptr<AbsHBHEPhase1Algo> reco_;
+  edm::EDGetTokenT<HBHEChannelInfoCollection> token_ChannelInfo_;
+  
+  edm::Service<TFileService> FileService;
+  TTree *outTree;
+  
+  //std::unique_ptr<const HcalTimeSlew> hcalTimeSlewDelay_;
 
   int ieta;
   int iphi;
   int depth;
-  int soi;
+
+  int   nSamples;
+  int   soi;
+
+  bool  use3;
+
+  float mahiEnergy;
+  float chiSq;
+  float arrivalTime;
+
+  float pEnergy;
+  float nEnergy;
+  float pedEnergy;
+
+  float count[10];
+  float inputTS[10];
+  float itPulse[10];
+  float pPulse[10];
+  float nPulse[10];
+
 
 };
 
 HBHEReconstructionDebugger::HBHEReconstructionDebugger(const edm::ParameterSet& iConfig)
   : reco_(parseHBHEPhase1AlgoDescription(iConfig.getParameter<edm::ParameterSet>("algorithm")))
 {
-   usesResource("TFileService");
-   token_ChannelInfo_ = consumes<HBHEChannelInfoCollection>(edm::InputTag("hbheprereco",""));
+
+  if (!reco_.get())
+    throw cms::Exception("HBHEPhase1BadConfig")
+      << "Invalid HBHEPhase1Algo algorithm configuration"
+      << std::endl;
+  
+  usesResource("TFileService");
+  token_ChannelInfo_ = consumes<HBHEChannelInfoCollection>(edm::InputTag("hbheprereco",""));
 }
 
 
@@ -125,6 +181,12 @@ void HBHEReconstructionDebugger::analyze(const edm::Event& iEvent, const edm::Ev
 {
    using namespace edm;
 
+   //edm::ESHandle<HcalTimeSlew> delay;
+   //iSetup.get<HcalTimeSlewRecord>().get("HBHE", delay);
+   //hcalTimeSlewDelay_ = std::unique_ptr<const HcalTimeSlew>(&(*delay));
+
+   //std::cout << hcalTimeSlewDelay_->delay(100, HcalTimeSlew::Medium) << std::endl;
+
    Handle<HBHEChannelInfoCollection> hChannelInfo;
    iEvent.getByToken(token_ChannelInfo_, hChannelInfo);
 
@@ -140,10 +202,31 @@ void HBHEReconstructionDebugger::analyze(const edm::Event& iEvent, const edm::Ev
 
      const bool isRealData = true;
      MahiDebugInfo mdi = static_cast<SimpleHBHEPhase1AlgoDebug*>(reco_.get())->recoDebug(hci, isRealData);
+     nSamples = mdi.nSamples;
      soi = mdi.soi;
+     use3 = mdi.use3;
+     mahiEnergy = mdi.mahiEnergy;
+     chiSq = mdi.chiSq;
+     arrivalTime = mdi.arrivalTime;
+     pEnergy=mdi.pEnergy;
+     nEnergy=mdi.nEnergy;
+     pedEnergy=mdi.pedEnergy;
+     for (int i=0; i<nSamples; i++) {
+       count[i]=mdi.count[i];
+       inputTS[i]=mdi.inputTS[i];
+       itPulse[i]=mdi.itPulse[i];
+       pPulse[i]=mdi.pPulse[i];
+       nPulse[i]=mdi.nPulse[i];
+     }
+     if (nSamples==8) {
+       count[8]=8;
+       count[9]=9;
+     }
 
      outTree->Fill();
    }
+
+   //hcalTimeSlewDelay_.reset(nullptr);
 
 }
 
@@ -158,7 +241,20 @@ HBHEReconstructionDebugger::beginJob()
   outTree->Branch("ieta",  &ieta,  "ieta/I");
   outTree->Branch("iphi",  &iphi,  "iphi/I");
   outTree->Branch("depth", &depth, "depth/I");
+  outTree->Branch("nSamples",   &nSamples,   "nSamples/I");
   outTree->Branch("soi",   &soi,   "soi/I");
+
+  outTree->Branch("mahiEnergy",   &mahiEnergy,   "mahiEnergy/F");
+  outTree->Branch("chiSq",   &chiSq,   "chiSq/F");
+  outTree->Branch("arrivalTime",   &arrivalTime,   "arrivalTime/F");
+  outTree->Branch("pEnergy",   &pEnergy,   "pEnergy/F");
+  outTree->Branch("nEnergy",   &nEnergy,   "nEnergy/F");
+  outTree->Branch("pedEnergy",   &pedEnergy,   "pedEnergy/F");
+  outTree->Branch("count",   &count,   "count[10]/F");
+  outTree->Branch("inputTS",   &inputTS,   "inputTS[10]/F");
+  outTree->Branch("itPulse",   &itPulse,   "itPulse[10]/F");
+  outTree->Branch("pPulse",   &pPulse,   "pPulse[10]/F");
+  outTree->Branch("nPulse",   &nPulse,   "nPulse[10]/F");
 
 }
 

@@ -1,5 +1,6 @@
 #include "RecoLocalCalo/HcalRecAlgos/interface/MahiFit.h" 
 #include "FWCore/MessageLogger/interface/MessageLogger.h"
+#include <iostream>
 
 MahiFit::MahiFit() :
   fullTSSize_(19), 
@@ -43,7 +44,50 @@ void MahiFit::setParameters(bool iDynamicPed, double iTS4Thresh, double chiSqSwi
 }
 
 void MahiFit::phase1Debug(const HBHEChannelInfo& channelData,
-			  const MahiDebugInfo& mdi) const {
+			  MahiDebugInfo& mdi) const {
+
+  //  std::cout << "---" << std::endl;
+
+  float recoEnergy, recoTime, chi2;
+  bool use3;
+  phase1Apply(channelData, recoEnergy, recoTime, use3, chi2);
+  //std::cout << nnlsWork_.ampVec << std::endl;
+
+  mdi.nSamples    = channelData.nSamples();
+  mdi.soi         = channelData.soi();
+
+  mdi.use3        = use3;
+
+  //mdi.mahiEnergy  = recoEnergy;
+  mdi.arrivalTime = recoTime;
+  mdi.chiSq       = chi2;
+
+  for (unsigned int iBX=0; iBX<nnlsWork_.nPulseTot; ++iBX) {
+    if (nnlsWork_.bxs.coeff(iBX)==0) {
+      mdi.mahiEnergy=nnlsWork_.ampVec.coeff(iBX);
+      for(unsigned int iTS=0; iTS<nnlsWork_.tsSize; ++iTS){
+	mdi.count[iTS] = iTS;
+	mdi.inputTS[iTS] = nnlsWork_.amplitudes.coeff(iTS);
+	mdi.itPulse[iTS] = nnlsWork_.pulseMat.col(iBX).coeff(iTS);
+      }
+    }
+    else if (nnlsWork_.bxs.coeff(iBX)==100) {
+      mdi.pedEnergy=nnlsWork_.ampVec.coeff(iBX);
+    }
+    else if (nnlsWork_.bxs.coeff(iBX)==-1) {
+      mdi.pEnergy=nnlsWork_.ampVec.coeff(iBX);
+      for(unsigned int iTS=0; iTS<nnlsWork_.tsSize; ++iTS){
+        mdi.pPulse[iTS] = nnlsWork_.pulseMat.col(iBX).coeff(iTS);
+      }
+    }
+    else if (nnlsWork_.bxs.coeff(iBX)==1) {
+      mdi.nEnergy=nnlsWork_.ampVec.coeff(iBX);
+      for(unsigned int iTS=0; iTS<nnlsWork_.tsSize; ++iTS){
+	mdi.nPulse[iTS] = nnlsWork_.pulseMat.col(iBX).coeff(iTS);
+      }
+    }
+  }
+  
   
 }
 
@@ -52,6 +96,7 @@ void MahiFit::phase1Apply(const HBHEChannelInfo& channelData,
 			  float& reconstructedTime,
 			  bool& useTriple, 
 			  float& chi2) const {
+
 
   assert(channelData.nSamples()==8||channelData.nSamples()==10);
 
@@ -146,7 +191,6 @@ void MahiFit::phase1Apply(const HBHEChannelInfo& channelData,
 }
 
 void MahiFit::doFit(std::array<float,3> &correctedOutput, int nbx) const {
-
   unsigned int bxSize=1;
 
   if (nbx==1) {
@@ -197,11 +241,9 @@ void MahiFit::doFit(std::array<float,3> &correctedOutput, int nbx) const {
 		       nnlsWork_.pulseShapeArray[iBX], 
 		       nnlsWork_.pulseDerivArray[iBX],
 		       nnlsWork_.pulseCovArray[iBX]);
-      
+
       nnlsWork_.ampVec.coeffRef(iBX)=0;
-
       nnlsWork_.pulseMat.col(iBX) = nnlsWork_.pulseShapeArray[iBX].segment(nnlsWork_.fullTSOffset - offset, nnlsWork_.tsSize);
-
     }
   }
 
@@ -229,13 +271,10 @@ void MahiFit::doFit(std::array<float,3> &correctedOutput, int nbx) const {
     double arrivalTime = calculateArrivalTime();
     correctedOutput.at(1) = arrivalTime; //time
     correctedOutput.at(2) = chiSq; //chi2
-
   }
-  
 }
 
 double MahiFit::minimize() const {
-
   int iter = 0;
   double oldChiSq=9999;
   double chiSq=oldChiSq;
@@ -275,10 +314,10 @@ double MahiFit::minimize() const {
 
 void MahiFit::updatePulseShape(double itQ, FullSampleVector &pulseShape, FullSampleVector &pulseDeriv,
 			       FullSampleMatrix &pulseCov) const {
-  
-  float t0=meanTime_;
-  if (applyTimeSlew_) t0+=hcalTimeSlewDelay_->delay(std::max(1.0, itQ), slewFlavor_);
 
+  float t0=meanTime_;
+  if (applyTimeSlew_) t0+=std::min(10.0, 13.307784-1.556668*log(std::max(1.0,itQ)));
+  //if (applyTimeSlew_) t0+=0.0;
   nnlsWork_.pulseN.fill(0);
   nnlsWork_.pulseM.fill(0);
   nnlsWork_.pulseP.fill(0);
@@ -486,10 +525,13 @@ double MahiFit::calculateChiSq() const {
   return (nnlsWork_.covDecomp.matrixL().solve(nnlsWork_.pulseMat*nnlsWork_.ampVec - nnlsWork_.amplitudes)).squaredNorm();
 }
 
-void MahiFit::setPulseShapeTemplate(const HcalPulseShapes::Shape& ps,
-				    const HcalTimeSlew& hcalTimeSlewDelay) {
+void MahiFit::setPulseShapeTemplate(const HcalPulseShapes::Shape& ps) {
+				    //const HcalTimeSlew* hcalTimeSlewDelay) {
   
-  hcalTimeSlewDelay_ = &hcalTimeSlewDelay;
+  //hcalTimeSlewDelay_ = hcalTimeSlewDelay;
+
+  //std::cout << hcalTimeSlewDelay->delay(100, HcalTimeSlew::Medium) << std::endl;
+  //std::cout << hcalTimeSlewDelay_->delay(100, HcalTimeSlew::Medium) << std::endl;
 
   if (!(&ps == currentPulseShape_ ))
     {

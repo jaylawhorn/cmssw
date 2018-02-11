@@ -14,7 +14,8 @@
 #include "FWCore/Framework/interface/ESHandle.h"
 
 MahiDebugInfo SimpleHBHEPhase1AlgoDebug::recoDebug(const HBHEChannelInfo& info,
-						   const bool isData)
+						   const bool isData) 
+//const HcalTimeSlew *htsd)
 {
   MahiDebugInfo mdi;
   const HcalDetId channelId(info.id());
@@ -59,25 +60,27 @@ MahiDebugInfo SimpleHBHEPhase1AlgoDebug::recoDebug(const HBHEChannelInfo& info,
   //  }
   
   // Run Mahi
-  float m4E = 0.f, m4chi2 = -1.f;
-  float m4T = 0.f;
-  bool m4UseTriple=false;
+  //float m4E = 0.f, m4chi2 = -1.f;
+  //float m4T = 0.f;
+  //bool m4UseTriple=false;
   
   const MahiFit* mahi = mahiOOTpuCorr_.get();
 
   //std::cout << "yo " << std::endl;
 
-  //std::cout << hcalTimeSlewDelay_->delay(0,HcalTimeSlew::Medium) << std::endl;
+  //std::cout << htsd->delay(100,HcalTimeSlew::Medium) << std::endl;
 
   if (mahi) {
-    mahiOOTpuCorr_->setPulseShapeTemplate(theHcalPulseShapes_.getShape(info.recoShape()),
-					  hcalTimeSlewDelay_);
-    //mahi->phase1Apply(info,m4E,m4T,m4UseTriple,m4chi2,hcalTimeSlew_delay_);
+    mahiOOTpuCorr_->setPulseShapeTemplate(theHcalPulseShapes_.getShape(info.recoShape()));//,
+    //htsd);
+    //std::cout << "...." << std::endl;
+    //mahi->phase1Apply(info,m4E,m4T,m4UseTriple,m4chi2);
+    mahi->phase1Debug(info, mdi);
   //m4E *= hbminusCorrectionFactor(channelId, m4E, isData);
   }
 
-  mdi.nSamples = info.nSamples();
-  mdi.soi = info.soi();
+  //mdi.nSamples = info.nSamples();
+  //mdi.soi = info.soi();
   //mdi.mahiEnergy = m4E;
   //mdi.chiSq = m4chi2;
   //mdi.arrivalTime = m4T;

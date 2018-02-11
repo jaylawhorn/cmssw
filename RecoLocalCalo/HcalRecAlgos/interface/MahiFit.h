@@ -16,13 +16,25 @@
 
 struct MahiDebugInfo {
 
-  int    nSamples;
-  int    soi;
+  int   nSamples;
+  int   soi;
 
-  double mahiEnergy;
-  double chiSq;
-  double arrivalTime;
+  bool  use3;
 
+  float mahiEnergy;
+  float chiSq;
+  float arrivalTime;
+
+  float pEnergy;
+  float nEnergy;
+  float pedEnergy;
+
+  float count[10];
+  float inputTS[10];
+  float itPulse[10];
+  float pPulse[10];
+  float nPulse[10];
+  
 };
 
 struct MahiNnlsWorkspace {
@@ -105,7 +117,7 @@ class MahiFit
 		     double iDeltaChiSqThresh, double iNnlsThresh);
 
   void phase1Debug(const HBHEChannelInfo& channelData,
-		   const MahiDebugInfo& mdi) const;
+		   MahiDebugInfo& mdi) const;
 
   void phase1Apply(const HBHEChannelInfo& channelData, 
 		   float& reconstructedEnergy, 
@@ -115,7 +127,7 @@ class MahiFit
 
   void doFit(std::array<float,3> &correctedOutput, int nbx) const;
 
-  void setPulseShapeTemplate  (const HcalPulseShapes::Shape& ps, const HcalTimeSlew& hcalTimeSlewDelay);
+  void setPulseShapeTemplate  (const HcalPulseShapes::Shape& ps);//, const HcalTimeSlew* hcalTimeSlewDelay);
   void resetPulseShapeTemplate(const HcalPulseShapes::Shape& ps);
 
   typedef BXVector::Index Index;

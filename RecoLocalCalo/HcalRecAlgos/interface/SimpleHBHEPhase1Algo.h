@@ -109,7 +109,7 @@ private:
     std::unique_ptr<MahiFit> mahiOOTpuCorr_;
 
     HcalPulseShapes theHcalPulseShapes_;
-    HcalTimeSlew hcalTimeSlewDelay_;
+    std::unique_ptr<const HcalTimeSlew> hcalTimeSlewDelay_;
 };
 
 #endif // RecoLocalCalo_HcalRecAlgos_SimpleHBHEPhase1Algo_h_

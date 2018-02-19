@@ -46,17 +46,51 @@ void MahiFit::setParameters(bool iDynamicPed, double iTS4Thresh, double chiSqSwi
 void MahiFit::phase1Debug(const HBHEChannelInfo& channelData,
 			  MahiDebugInfo& mdi) const {
 
-  //  std::cout << "---" << std::endl;
-
   float recoEnergy, recoTime, chi2;
   bool use3;
   phase1Apply(channelData, recoEnergy, recoTime, use3, chi2);
-  //std::cout << nnlsWork_.ampVec << std::endl;
+
 
   mdi.nSamples    = channelData.nSamples();
   mdi.soi         = channelData.soi();
 
   mdi.use3        = use3;
+
+  mdi.inTimeConst = nnlsWork_.dt;
+  mdi.inDarkCurrent = getSiPMDarkCurrent(channelData.darkCurrent(), channelData.fcByPE(),
+					 channelData.lambda());
+  mdi.inPedAvg    = 0.25*( channelData.tsPedestalWidth(0)*channelData.tsPedestalWidth(0)+
+			   channelData.tsPedestalWidth(1)*channelData.tsPedestalWidth(1)+
+			   channelData.tsPedestalWidth(2)*channelData.tsPedestalWidth(2)+
+			   channelData.tsPedestalWidth(3)*channelData.tsPedestalWidth(3) );
+  mdi.inGain      = channelData.tsGain(0);
+
+  for (unsigned int iTS=0; iTS<channelData.nSamples(); ++iTS) {
+
+    double charge = channelData.tsRawCharge(iTS);
+    double ped = channelData.tsPedestal(iTS);
+
+    mdi.inNoiseADC[iTS]  = (1./sqrt(12))*channelData.tsDFcPerADC(iTS);
+
+    if(channelData.hasTimeInfo() && !channelData.hasEffectivePedestals() && (charge-ped)>channelData.tsPedestalWidth(iTS)) {
+      mdi.inNoiseDC[iTS] = mdi.inDarkCurrent;
+    }
+    else { mdi.inNoiseDC[iTS] = 0; }
+
+    if ( (charge-ped)>channelData.tsPedestalWidth(iTS)) {
+      mdi.inNoisePhoto[iTS] = sqrt((charge-ped)*channelData.fcByPE());
+    }
+    else { mdi.inNoisePhoto[iTS] = 0; }
+
+    mdi.inPedestal[iTS]  = channelData.tsPedestalWidth(iTS);    
+    mdi.totalUCNoise[iTS] = nnlsWork_.noiseTerms.coeffRef(iTS);
+
+    if (channelData.hasTimeInfo()) {
+      mdi.inputTDC[iTS] = channelData.tsRiseTime(iTS);
+    }
+    else { mdi.inputTDC[iTS]=-1; }
+
+  }
 
   //mdi.mahiEnergy  = recoEnergy;
   mdi.arrivalTime = recoTime;

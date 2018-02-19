@@ -21,13 +21,14 @@ process.load('Configuration.StandardSequences.EndOfProcess_cff')
 process.load('Configuration.StandardSequences.FrontierConditions_GlobalTag_cff')
 
 process.maxEvents = cms.untracked.PSet(
-    input = cms.untracked.int32(100)
+    input = cms.untracked.int32(-1)
 )
 
 # Input source
 process.source = cms.Source("PoolSource",
                             fileNames = cms.untracked.vstring(
-        "file:/eos/cms/store/user/jlawhorn/Run2017F_HTMHT_305862_1ACCE666.root"
+        "/store/data/Run2017F/ZeroBias/RAW/v1/000/305/757/00000/041E9F8E-ACBA-E711-8BC9-02163E0134E0.root"
+        #"file:/eos/cms/store/user/jlawhorn/Run2017F_HTMHT_305862_1ACCE666.root"
         ),
                             secondaryFileNames = cms.untracked.vstring()
                             )
@@ -112,7 +113,7 @@ process.dump_step = cms.Path(process.dump)
 
 process.TFileService = cms.Service(
     "TFileService",
-    fileName = cms.string("test.root")
+    fileName = cms.string("phasescantest.root")
     )
 
 process.flat_step = cms.Path(process.flat)
@@ -121,7 +122,6 @@ process.flat_step = cms.Path(process.flat)
 # Schedule definition
 process.schedule = cms.Schedule(process.raw2digi_step,
                                 process.reconstruction_step,
-                                process.dump_step,
                                 process.flat_step,
                                 process.endjob_step)
 #process.FEVTDEBUGoutput_step)

@@ -89,36 +89,8 @@ class HBHEReconstructionDebugger : public edm::one::EDAnalyzer<edm::one::SharedR
       virtual void analyze(const edm::Event&, const edm::EventSetup&) override;
       virtual void endJob() override;
 
-      // ----------member data ---------------------------
-  // Configuration parameters
-//  std::string algoConfigClass_;
-//  bool processQIE8_;
-//  bool processQIE11_;
-//  bool saveInfos_;
-//  bool saveDroppedInfos_;
-//  bool makeRecHits_;
-//  bool dropZSmarkedPassed_;
-//  bool tsFromDB_;
-//  bool recoParamsFromDB_;
-//  bool saveEffectivePedestal_;
-//  int sipmQTSShift_;
-//  int sipmQNTStoSum_;
-//
-//  // Parameters for turning status bit setters on/off
-//  bool setNegativeFlagsQIE8_;
-//  bool setNegativeFlagsQIE11_;
-//  bool setNoiseFlagsQIE8_;
-//  bool setNoiseFlagsQIE11_;
-//  bool setPulseShapeFlagsQIE8_;
-//  bool setPulseShapeFlagsQIE11_;
-//
-//  // Other members
-//  edm::EDGetTokenT<HBHEDigiCollection> tok_qie8_;
-//  edm::EDGetTokenT<QIE11DigiCollection> tok_qie11_;
-//  std::unique_ptr<AbsHBHEPhase1Algo> reco_;
-//  std::unique_ptr<AbsHcalAlgoData> recoConfig_;
-//  std::unique_ptr<HcalRecoParams> paramTS_;
-
+  // ----------member data ---------------------------
+  
   std::unique_ptr<AbsHBHEPhase1Algo> reco_;
   edm::EDGetTokenT<HBHEChannelInfoCollection> token_ChannelInfo_;
   
@@ -126,6 +98,10 @@ class HBHEReconstructionDebugger : public edm::one::EDAnalyzer<edm::one::SharedR
   TTree *outTree;
   
   //std::unique_ptr<const HcalTimeSlew> hcalTimeSlewDelay_;
+
+  int run;
+  int evt;
+  int ls;
 
   int ieta;
   int iphi;
@@ -135,6 +111,18 @@ class HBHEReconstructionDebugger : public edm::one::EDAnalyzer<edm::one::SharedR
   int   soi;
 
   bool  use3;
+
+  float inTimeConst;
+  float inDarkCurrent;
+  float inPedAvg;
+  float inGain;
+
+  float inNoiseADC[10];
+  float inNoiseDC[10];
+  float inNoisePhoto[10];
+  float inPedestal[10];
+
+  float totalUCNoise[10];
 
   float mahiEnergy;//SOI charge
   float chiSq;
@@ -146,6 +134,7 @@ class HBHEReconstructionDebugger : public edm::one::EDAnalyzer<edm::one::SharedR
 
   float count[10]; //TS value 0-9
   float inputTS[10];//input TS samples
+  int inputTDC[10];//input TS samples
   float itPulse[10];//SOI pulse shape
   float pPulse[10];//SOI-1 pulse shape
   float nPulse[10];//SOI+1 pulse shape
@@ -187,6 +176,10 @@ void HBHEReconstructionDebugger::analyze(const edm::Event& iEvent, const edm::Ev
 
    //std::cout << hcalTimeSlewDelay_->delay(100, HcalTimeSlew::Medium) << std::endl;
 
+   run = iEvent.id().run();
+   evt = iEvent.id().event();
+   ls = iEvent.id().luminosityBlock();
+
    Handle<HBHEChannelInfoCollection> hChannelInfo;
    iEvent.getByToken(token_ChannelInfo_, hChannelInfo);
 
@@ -204,6 +197,12 @@ void HBHEReconstructionDebugger::analyze(const edm::Event& iEvent, const edm::Ev
      MahiDebugInfo mdi = static_cast<SimpleHBHEPhase1AlgoDebug*>(reco_.get())->recoDebug(hci, isRealData);
      nSamples = mdi.nSamples;
      soi = mdi.soi;
+
+     inTimeConst = mdi.inTimeConst;
+     inDarkCurrent = mdi.inDarkCurrent;
+     inPedAvg = mdi.inPedAvg;
+     inGain = mdi.inGain;
+
      use3 = mdi.use3;
      mahiEnergy = mdi.mahiEnergy;
      chiSq = mdi.chiSq;
@@ -214,18 +213,26 @@ void HBHEReconstructionDebugger::analyze(const edm::Event& iEvent, const edm::Ev
      for (int i=0; i<nSamples; i++) {
        count[i]=mdi.count[i];
        inputTS[i]=mdi.inputTS[i];
+       inputTDC[i]=mdi.inputTDC[i];
        itPulse[i]=mdi.itPulse[i];
        pPulse[i]=mdi.pPulse[i];
        nPulse[i]=mdi.nPulse[i];
+
+       inNoiseADC[i]=mdi.inNoiseADC[i];
+       inNoiseDC[i]=mdi.inNoiseDC[i];
+       inNoisePhoto[i]=mdi.inNoisePhoto[i];
+       inPedestal[i]=mdi.inPedestal[i];
+       totalUCNoise[i]=mdi.totalUCNoise[i];
+
      }
      if (nSamples==8) {
        count[8]=8;
        count[9]=9;
      }
-
-     outTree->Fill();
+     
+     if (chiSq>-1) outTree->Fill();
    }
-
+   
    //hcalTimeSlewDelay_.reset(nullptr);
 
 }
@@ -238,11 +245,19 @@ HBHEReconstructionDebugger::beginJob()
 
   outTree = FileService->make<TTree>("HcalTree","HcalTree");
   
+  outTree->Branch("run",  &run,  "run/I");
+  outTree->Branch("evt",  &evt,  "evt/I");
+  outTree->Branch("ls",  &ls,  "ls/I");
   outTree->Branch("ieta",  &ieta,  "ieta/I");
   outTree->Branch("iphi",  &iphi,  "iphi/I");
   outTree->Branch("depth", &depth, "depth/I");
   outTree->Branch("nSamples",   &nSamples,   "nSamples/I");
   outTree->Branch("soi",   &soi,   "soi/I");
+
+  outTree->Branch("inTimeConst",   &inTimeConst,   "inTimeConst/F");
+  outTree->Branch("inDarkCurrent",   &inDarkCurrent,   "inDarkCurrent/F");
+  outTree->Branch("inPedAvg",   &inPedAvg,   "inPedAvg/F");
+  outTree->Branch("inGain",   &inGain,   "inGain/F");
 
   outTree->Branch("mahiEnergy",   &mahiEnergy,   "mahiEnergy/F");
   outTree->Branch("chiSq",   &chiSq,   "chiSq/F");
@@ -252,9 +267,16 @@ HBHEReconstructionDebugger::beginJob()
   outTree->Branch("pedEnergy",   &pedEnergy,   "pedEnergy/F");
   outTree->Branch("count",   &count,   "count[10]/F");
   outTree->Branch("inputTS",   &inputTS,   "inputTS[10]/F");
+  outTree->Branch("inputTDC",   &inputTDC,   "inputTDC[10]/I");
   outTree->Branch("itPulse",   &itPulse,   "itPulse[10]/F");
   outTree->Branch("pPulse",   &pPulse,   "pPulse[10]/F");
   outTree->Branch("nPulse",   &nPulse,   "nPulse[10]/F");
+
+  outTree->Branch("inNoiseADC",   &inNoiseADC,   "inNoiseADC[10]/F");
+  outTree->Branch("inNoiseDC",   &inNoiseDC,   "inNoiseDC[10]/F");
+  outTree->Branch("inNoisePhoto",   &inNoisePhoto,   "inNoisePhoto[10]/F");
+  outTree->Branch("inPedestal",   &inPedestal,   "inPedestal[10]/F");
+  outTree->Branch("totalUCNoise",   &totalUCNoise,   "totalUCNoise[10]/F");
 
 }
 
